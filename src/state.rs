@@ -4,7 +4,7 @@ use egui_file_dialog::FileDialog;
 use nokhwa::utils::{ControlValueSetter, KnownCameraControl};
 
 use crate::{
-	cam_controls::build_control_sweeps,
+	camera_controls::build_control_sweeps,
 	capture::Capture,
 	dataset::Dataset,
 	saving::Saving,
@@ -49,10 +49,10 @@ impl State {
 		}
 	}
 
-	pub fn get_state_label(&self) -> String {
-		// TODO: Replace this will a proper breakdown of the current program state.
-		format!("{}\n{}", self.dataset_path_label, self.subset_path_label)
-	}
+	//pub fn get_state_label(&self) -> String {
+	//	// TODO: Replace this will a proper breakdown of the current program state.
+	//	format!("{}\n{}", self.dataset_path_label, self.subset_path_label)
+	//}
 
 	pub fn try_add_subset(&mut self, subset: Subset) {
 		self.dataset

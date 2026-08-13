@@ -4,9 +4,9 @@ use edge::Camera;
 use eframe::egui::TextBuffer;
 
 use crate::{
-	cam_controls::{ControlSweepType, Finished},
 	capture::Capture,
 	settings::{FILE_NAME_BASE, IMAGE_EXTENSION, META_EXTENSION},
+	sweep::{ControlSweepType, Finished},
 };
 
 const STRING_LENGTH: usize = 100;

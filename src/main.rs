@@ -67,8 +67,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // Hide console window on Windows in release.
 
 use eframe::{
-	egui::ViewportBuilder, EventLoopBuilder, EventLoopBuilderHook, NativeOptions, Renderer,
-	UserEvent,
+	EventLoopBuilder, EventLoopBuilderHook, NativeOptions, Renderer, UserEvent,
+	egui::ViewportBuilder,
 };
 #[cfg(target_os = "linux")]
 use winit::platform::wayland::EventLoopBuilderExtWayland as _; // Bring into context.
@@ -79,13 +79,14 @@ use settings::{WINDOW_HEIGHT, WINDOW_WIDTH};
 mod application;
 use application::DatasetAssistantApp;
 
-mod cam_controls;
+mod camera_controls;
 mod capture;
 mod dataset;
 mod entry;
 mod saving;
 mod state;
 mod subset;
+mod sweep;
 mod user_interface;
 
 fn main() -> eframe::Result {
