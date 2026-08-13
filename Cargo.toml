@@ -1,0 +1,63 @@
+[package]
+name = "dataset-assistant"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+edge = { path = "edge" }
+eframe = { version = "0.35", features = [
+	"glow"
+] }
+egui_extras = { version = "0.35", features = [
+	"image"
+] }
+egui-file-dialog = { version = "0.14", default-features = false }
+image = { version = "0.25", default-features = false, features = [
+	"rayon",
+	"jpeg",
+	"png",
+	"gif",
+	"webp",
+	"avif"
+] }
+lab = "0.11"
+nokhwa = { version = "0.10", default-features = false, features = [
+	"input-native",
+	"decoding",
+	"serialize",
+	"output-threaded"
+] }
+rayon = "1"
+reqwest = { version = "0.13", features = [
+	"json",
+	"multipart"
+] }
+serde = { version = "1" , features = [
+	"derive"
+] }
+winit = "0.30"
+
+[lints.rust]
+unsafe_code = "deny" # We should avoid using unsafe code as much as possible.
+
+[lints.rustdoc]
+missing_crate_level_docs = "warn"
+broken_intra_doc_links = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1} # This should be upgraded to forbid in the future.
+# Lints from the pedantic group:
+missing_errors_doc = "allow" # Consider upgrading in the future.
+missing_panics_doc = "allow" # Consider upgrading in the future.
+duration_suboptimal_units = "allow"
+
+# Lints from the restriction group:
+else_if_without_else = "warn"
+empty_structs_with_brackets = "allow" # This should be upgraded to warn in the future.
+indexing_slicing = "warn" # This may be upgraded to forbid in the future.
+missing_asserts_for_indexing = "warn" # Contention with the above.
+must_use_candidate = "allow" # Consider upgrading in the future.
+pattern_type_mismatch = "allow" # Consider upgrading in the future.
+print_stderr = "allow" # This should be upgraded to forbid in the future.
+unwrap_used = "warn" # This should be upgraded to forbid in the future.
+# TODO Add more from https://rust-lang.github.io/rust-clippy/master/index.html?groups=restriction

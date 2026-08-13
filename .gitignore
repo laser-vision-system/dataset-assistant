@@ -3,3 +3,6 @@
 
 # Folder for temporary files
 temp/
+
+# Added by cargo
+/target

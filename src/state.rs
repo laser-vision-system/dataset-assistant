@@ -1,0 +1,170 @@
+use edge::Camera;
+use eframe::egui::{self, TextBuffer};
+use egui_file_dialog::FileDialog;
+use nokhwa::utils::{ControlValueSetter, KnownCameraControl};
+
+use crate::{
+	cam_controls::build_control_sweeps,
+	capture::Capture,
+	dataset::Dataset,
+	saving::Saving,
+	settings::{DEFAULT_CAMERA_LABEL, DEFAULT_PATH_LABEL, DEFAULT_SUBSET_LABEL},
+	subset::Subset,
+};
+
+/// A mutually exclusive collection of states that the application can be in.
+#[derive(Default)]
+enum Stage {
+	#[default]
+	Preparation,
+	Collecting(Saving),
+}
+
+/// Internal program state.
+///
+/// `stage` is optional only to make it possible to swap the variant without clone or copy.
+#[derive(Default)]
+pub struct State {
+	stage: Stage,
+	file_dialog: FileDialog,
+	camera: Option<Camera>,
+	dataset: Option<Dataset>,
+	pub camera_id_label: String,
+	pub dataset_path_label: String,
+	pub subset_path_label: String,
+	pub requested_cam_index: Option<u32>,
+	pub live_feed: bool,
+	pub chose_folder: bool,
+	pub requested_brightness: Option<i64>,
+	pub saving_progress: String,
+}
+
+impl State {
+	pub fn new() -> Self {
+		Self {
+			camera_id_label: String::from(DEFAULT_CAMERA_LABEL),
+			dataset_path_label: String::from(DEFAULT_PATH_LABEL),
+			subset_path_label: String::from(DEFAULT_SUBSET_LABEL),
+			..Default::default()
+		}
+	}
+
+	pub fn get_state_label(&self) -> String {
+		// TODO: Replace this will a proper breakdown of the current program state.
+		format!("{}\n{}", self.dataset_path_label, self.subset_path_label)
+	}
+
+	pub fn try_add_subset(&mut self, subset: Subset) {
+		self.dataset
+			.as_mut()
+			.unwrap()
+			.add_subset(subset, &mut self.subset_path_label);
+	}
+
+	pub fn execute_for_preparation(
+		&mut self,
+		capture: &mut Capture,
+		ui: &mut egui::Ui,
+		request_capture: bool,
+	) {
+		if !self.current_state_is_preparation() {
+			return;
+		}
+
+		// Camera
+
+		if let Some(index) = self.requested_cam_index
+			&& self.camera.is_none()
+		{
+			self.camera = Camera::new(index).ok();
+			if self.camera.is_some() {
+				self.camera_id_label.replace_with(&format!("{index}"));
+			} else {
+				self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
+			}
+		}
+
+		if let Some(brightness) = self.requested_brightness
+			&& let Some(cam) = self.camera.as_mut()
+		{
+			let control_type = KnownCameraControl::Brightness;
+			let brightness = ControlValueSetter::Integer(brightness);
+			cam.set_control(control_type, brightness).unwrap();
+		}
+
+		// Capture
+
+		if request_capture || self.live_feed {
+			let cam = self.camera.as_mut().unwrap();
+			match cam.get_image_shrink() {
+				Ok(image) => capture.store_image(image),
+				Err(e) => eprintln!("Failed to get image: {e}"),
+			}
+		}
+
+		// File dialog
+
+		if self.chose_folder {
+			self.file_dialog.pick_directory();
+		}
+
+		self.file_dialog.update(ui);
+
+		if let Some(path) = self.file_dialog.take_picked() {
+			self.dataset = Dataset::try_new(path, &mut self.dataset_path_label);
+		}
+	}
+
+	pub fn execute_for_collecting(&mut self, capture: &mut Capture) {
+		if let Stage::Collecting(saving) = &mut self.stage
+			&& let Some(cam) = self.camera.as_mut()
+		{
+			if saving.pulse(cam, capture, &mut self.saving_progress) {
+				self.stage = Stage::Preparation;
+			}
+		}
+	}
+
+	pub fn try_to_collecting(&mut self) {
+		debug_assert!(self.is_complete());
+		let path = self.dataset.as_mut().unwrap().try_create_path();
+		match path {
+			Ok(path) => {
+				let Some(cam) = self.camera.as_mut() else {
+					return;
+				};
+				let control_sweeps = build_control_sweeps(cam);
+				let saving = Saving::new(path, control_sweeps);
+				self.stage = Stage::Collecting(saving);
+			},
+			Err(e) => eprintln!("Error saving: {e}"),
+		}
+	}
+
+	pub fn current_state_is_preparation(&self) -> bool {
+		matches!(self.stage, Stage::Preparation)
+	}
+
+	pub fn current_state_is_collecting(&self) -> bool {
+		matches!(self.stage, Stage::Collecting(_))
+	}
+
+	pub fn is_complete(&self) -> bool {
+		if self.camera.is_some()
+			&& let Some(dataset) = self.dataset.as_ref()
+			&& dataset.is_subset()
+		{
+			true
+		} else {
+			false
+		}
+	}
+
+	pub fn is_camera(&self) -> bool {
+		self.camera.is_some()
+	}
+
+	pub fn is_dataset(&self) -> bool {
+		self.dataset.is_some()
+	}
+}
