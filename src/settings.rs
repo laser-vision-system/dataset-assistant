@@ -23,7 +23,7 @@ pub const DIRECTORY_SELECTED_LABEL: &str = "Root";
 pub const NON_EMPTY_DIRECTORY_SELECTED_LABEL: &str = "Root (not empty)";
 pub const FAILED_DIRECTORY_LABEL: &str = "Failed to select directory";
 
-pub const DEFAULT_CAMERA_LABEL: &str = "No camera";
+pub const DEFAULT_CAMERA_LABEL: &str = "None";
 
 pub const FILE_NAME_BASE: &str = "capture";
 /// Lossless format and quick to save.

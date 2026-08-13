@@ -32,7 +32,7 @@ pub struct State {
 	pub camera_id_label: String,
 	pub dataset_path_label: String,
 	pub subset_path_label: String,
-	pub requested_cam_index: Option<u32>,
+	pub requested_cam_index: Option<Option<u32>>,
 	pub live_feed: bool,
 	pub chose_folder: bool,
 	pub requested_brightness: Option<i64>,
@@ -73,15 +73,15 @@ impl State {
 
 		// Camera
 
-		if let Some(index) = self.requested_cam_index
-			&& self.camera.is_none()
-		{
-			self.camera = Camera::new(index, None).ok();
-			if self.camera.is_some() {
+		if let Some(should) = self.requested_cam_index {
+			if let Some(index) = should {
+				self.camera = Camera::new(index, None).ok();
 				self.camera_id_label.replace_with(&format!("{index}"));
 			} else {
+				self.camera = None;
 				self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
 			}
+			self.requested_cam_index = None;
 		}
 
 		if let Some(brightness) = self.requested_brightness

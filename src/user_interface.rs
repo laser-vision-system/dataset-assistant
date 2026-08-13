@@ -1,7 +1,8 @@
+use edge::Camera;
 use eframe::egui;
 
 use crate::{
-	entry::{ParseAs, SimpleEntryBox, StatedEntryBox, input_grid},
+	entry::{ParseAs, SimpleEntryBox, input_grid},
 	settings::{
 		HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE, SUBHEADING_FONT_SIZE,
 		SUBHEADING_FONT_SPACING,
@@ -12,7 +13,6 @@ use crate::{
 /// The information and controls shown to the user.
 #[derive(Clone, Debug, Default)]
 pub struct UserInterface {
-	camera_input: String,
 	brightness_input: String,
 	camera_position_input: String,
 	laser_intensity_input: String,
@@ -38,14 +38,37 @@ impl UserInterface {
 		);
 	}
 
-	pub fn camera_entry_box(&mut self, ui: &mut egui::Ui, state: &str) -> Option<u32> {
-		//ui.menu_button("menu test", |ui| {
-		//	if ui.button("close").clicked() {
-		//		ui.close();
-		//	}
-		//});
+	/// First option is whether the menu is open.
+	/// Second option is whether a button was clicked.
+	/// Third option is the index.
+	pub fn camera_selection(
+		&mut self,
+		ui: &mut egui::Ui,
+		state: &str,
+	) -> Option<Option<Option<u32>>> {
+		ui.horizontal(|ui| {
+			ui.label("Selected ID:");
+			ui.label(state);
 
-		StatedEntryBox::new("ID:", state, &mut self.camera_input).parse_as(ui)
+			ui.menu_button("Select camera", |ui| {
+				if ui.button("None").clicked() {
+					return Some(None);
+				}
+
+				// Cannot be cached because state might change.
+				for info in Camera::query_for_available_cameras() {
+					let index = info.index().as_index().unwrap();
+					let btn_lbl = format!("{}: {}", index, info.human_name());
+					if ui.button(btn_lbl).clicked() {
+						ui.close();
+						return Some(Some(index));
+					}
+				}
+				None
+			})
+			.inner
+		})
+		.inner
 	}
 
 	pub fn choose_folder(&self, ui: &mut egui::Ui) -> bool {

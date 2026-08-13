@@ -54,9 +54,12 @@ impl eframe::App for DatasetAssistantApp {
 
 				ui.indent("camera", |ui| {
 					ui.add_enabled_ui(!self.state.live_feed, |ui| {
-						self.state.requested_cam_index = self
+						if let Some(selection) = self
 							.user_interface
-							.camera_entry_box(ui, &self.state.camera_id_label);
+							.camera_selection(ui, &self.state.camera_id_label)
+						{
+							self.state.requested_cam_index = selection;
+						}
 					});
 
 					ui.separator();
