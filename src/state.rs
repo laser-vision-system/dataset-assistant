@@ -21,8 +21,6 @@ enum Stage {
 }
 
 /// Internal program state.
-///
-/// `stage` is optional only to make it possible to swap the variant without clone or copy.
 #[derive(Default)]
 pub struct State {
 	stage: Stage,
