@@ -1,0 +1,3 @@
+[submodule "edge"]
+	path = edge
+	url = https://github.com/COS40005-P12/edge
