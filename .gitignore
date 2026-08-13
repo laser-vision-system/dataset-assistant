@@ -1,0 +1,5 @@
+# Visual studio code's folder
+.vscode/
+
+# Folder for temporary files
+temp/
