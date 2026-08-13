@@ -76,7 +76,7 @@ impl State {
 		if let Some(index) = self.requested_cam_index
 			&& self.camera.is_none()
 		{
-			self.camera = Camera::new(index).ok();
+			self.camera = Camera::new(index, None).ok();
 			if self.camera.is_some() {
 				self.camera_id_label.replace_with(&format!("{index}"));
 			} else {
