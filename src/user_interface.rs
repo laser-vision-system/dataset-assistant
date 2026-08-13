@@ -2,7 +2,10 @@ use eframe::egui;
 
 use crate::{
 	entry::{ParseAs, SimpleEntryBox, StatedEntryBox, input_grid},
-	settings::{HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE},
+	settings::{
+		HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE, SUBHEADING_FONT_SIZE,
+		SUBHEADING_FONT_SPACING,
+	},
 	subset::Subset,
 };
 
@@ -26,8 +29,13 @@ impl UserInterface {
 		ui.separator();
 	}
 
-	pub fn show_current_state(&self, ui: &mut egui::Ui, state_label: &str) {
-		ui.label(state_label);
+	pub fn add_subheading(&self, ui: &mut egui::Ui, text: &str) {
+		ui.add_space(5.0);
+		ui.label(
+			egui::RichText::new(text)
+				.size(SUBHEADING_FONT_SIZE)
+				.extra_letter_spacing(SUBHEADING_FONT_SPACING),
+		);
 	}
 
 	pub fn camera_entry_box(&mut self, ui: &mut egui::Ui, state: &str) -> Option<u32> {
@@ -37,7 +45,7 @@ impl UserInterface {
 		//	}
 		//});
 
-		StatedEntryBox::new("Camera id:", state, &mut self.camera_input).parse_as(ui)
+		StatedEntryBox::new("ID:", state, &mut self.camera_input).parse_as(ui)
 	}
 
 	pub fn choose_folder(&self, ui: &mut egui::Ui) -> bool {

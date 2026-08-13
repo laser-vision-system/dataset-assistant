@@ -10,7 +10,11 @@ pub const WINDOW_WIDTH: f32 = TEXTURE_WIDTH as f32 + CONTROLS_WIDTH_MAX;
 pub const WINDOW_HEIGHT: f32 = TEXTURE_HEIGHT as f32;
 
 pub const HEADING_FONT_SIZE: f32 = 18.0;
+pub const SUBHEADING_FONT_SIZE: f32 = 14.0;
+
 pub const HEADING_FONT_SPACING: f32 = 1.0;
+pub const SUBHEADING_FONT_SPACING: f32 = 0.8;
+
 pub const PREHEADING_SPACE: f32 = 5.0;
 
 pub const DEFAULT_PATH_LABEL: &str = "No folder selected";
