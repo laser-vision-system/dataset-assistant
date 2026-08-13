@@ -1,7 +1,10 @@
 use eframe::egui;
 
 use crate::{
-	capture::Capture, settings::CONTROLS_WIDTH, state::State, user_interface::UserInterface,
+	capture::Capture,
+	settings::{CONTROLS_WIDTH_MAX, CONTROLS_WIDTH_MIN},
+	state::State,
+	user_interface::UserInterface,
 };
 
 /// The central egui application.
@@ -24,7 +27,7 @@ impl DatasetAssistantApp {
 impl eframe::App for DatasetAssistantApp {
 	fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
 		egui::Panel::left("controls").show(ui, |ui| {
-			ui.set_min_width(CONTROLS_WIDTH);
+			ui.set_width_range(CONTROLS_WIDTH_MIN..=CONTROLS_WIDTH_MAX);
 			self.user_interface.add_heading(ui);
 
 			let mut request_capture = false;

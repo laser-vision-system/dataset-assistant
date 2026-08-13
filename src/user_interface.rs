@@ -2,7 +2,7 @@ use eframe::egui;
 
 use crate::{
 	entry::{ParseAs, SimpleEntryBox, StatedEntryBox, input_grid},
-	settings::TITLE_FONT_SIZE,
+	settings::{HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE},
 	subset::Subset,
 };
 
@@ -17,11 +17,11 @@ pub struct UserInterface {
 
 impl UserInterface {
 	pub fn add_heading(&self, ui: &mut egui::Ui) {
-		ui.add_space(5.0);
+		ui.add_space(PREHEADING_SPACE);
 		ui.label(
 			egui::RichText::new("Dataset Assistant")
-				.size(TITLE_FONT_SIZE)
-				.extra_letter_spacing(1.0),
+				.size(HEADING_FONT_SIZE)
+				.extra_letter_spacing(HEADING_FONT_SPACING),
 		);
 		ui.separator();
 	}

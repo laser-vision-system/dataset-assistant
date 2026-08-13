@@ -6,6 +6,10 @@ use std::{
 
 use eframe::egui::TextBuffer;
 
+use crate::settings::{
+	DIRECTORY_SELECTED_LABEL, FAILED_DIRECTORY_LABEL, NON_EMPTY_DIRECTORY_SELECTED_LABEL,
+};
+
 use super::subset::Subset;
 
 /// Query a path for availablility information.
@@ -49,16 +53,24 @@ impl Dataset {
 	pub fn try_new(path: PathBuf, label: &mut String) -> Option<Self> {
 		match is_path_available(&path) {
 			Ok(()) => {
-				label.replace_with(&format!("Selected folder: {}/", path.display()));
+				label.replace_with(&format!(
+					"{}: {}/",
+					DIRECTORY_SELECTED_LABEL,
+					path.display()
+				));
 				Some(Self::new(path))
 			},
 			// The root path is allow to contain files or subdirectories.
 			Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty => {
-				label.replace_with(&format!("Selected folder (not empty): {}/", path.display()));
+				label.replace_with(&format!(
+					"{}: {}/",
+					NON_EMPTY_DIRECTORY_SELECTED_LABEL,
+					path.display()
+				));
 				Some(Self::new(path))
 			},
 			Err(e) => {
-				label.replace_with(&format!("Failed to select directory: {e}"));
+				label.replace_with(&format!("{}: {e}", FAILED_DIRECTORY_LABEL));
 				None
 			},
 		}
@@ -68,7 +80,7 @@ impl Dataset {
 		let temp = subset.get_full_path(self.root.clone());
 		self.subset = match is_path_available(&temp) {
 			Ok(()) => {
-				label.replace_with(&format!("{subset}"));
+				label.replace_with(&format!("Subset: {subset}"));
 				Some(subset)
 			},
 			Err(e) => {
