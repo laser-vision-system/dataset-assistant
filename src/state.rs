@@ -118,6 +118,7 @@ impl State {
 			&& let Some(cam) = self.camera.as_mut()
 		{
 			if saving.pulse(cam, capture, &mut self.saving_progress) {
+				// TODO: See if I can play an alert sound.
 				self.stage = Stage::Preparation;
 			}
 		}
