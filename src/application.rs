@@ -67,13 +67,17 @@ impl eframe::App for DatasetAssistantApp {
 					ui.add_enabled_ui(self.state.is_camera(), |ui| {
 						request_capture =
 							UserInterface::capture_controls(ui, &mut self.state.live_feed);
-
-						UserInterface::draw_controls(
-							ui,
-							&mut self.state.controls.iter_mut().collect(),
-							&mut self.state.requested_controls.iter_mut().collect(),
-						);
 					});
+
+					if self.state.is_camera() {
+						ui.collapsing("Controls:", |ui| {
+							UserInterface::draw_controls(
+								ui,
+								&mut self.state.controls.iter_mut().collect(),
+								&mut self.state.requested_controls.iter_mut().collect(),
+							);
+						});
+					}
 				});
 
 				ui.add_space(5.0);
