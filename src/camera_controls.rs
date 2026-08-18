@@ -3,13 +3,14 @@ use edge::{
 	tcam_interface::controls::{
 		descriptions::{CamControl, IntegerRangeControl},
 		traits::{
-			ControlDefault, ControlDescription, ControlMax, ControlMin, ControlStep, ControlValue,
+			ControlDefault, ControlDescription, ControlItems, ControlMax, ControlMin, ControlStep,
+			ControlValue,
 		},
 		values::ConValueIntegerType,
 	},
 };
 
-use nokhwa::utils::KnownCameraControl;
+use nokhwa::utils::{KnownCameraControl, MenuItem};
 
 use crate::sweep::{ControlSweep, ControlSweepType};
 
@@ -53,12 +54,39 @@ impl TryFrom<CamControl> for ControlManager {
 	}
 }
 
-pub fn extract_controls(camera: &mut Camera) -> Vec<ControlManager> {
+pub fn try_disable_auto_exposure(camera: &mut Camera) -> Result<(), ()> {
+	let id = KnownCameraControl::AutoExposure;
+	let CamControl::Menu(control) = camera.get_control(id) else {
+		return Err(());
+	};
+	let items = control.get_items();
+	let valid_entires: Vec<_> = items
+		.iter()
+		.filter(|&entry| {
+			let MenuItem::Name(name) = entry.get_item() else {
+				return false;
+			};
+			const PATTERNS: [&str; 2] = ["manual", "Manual"];
+			PATTERNS.into_iter().any(|pattern| name.contains(pattern))
+		})
+		.collect();
+	let &first = valid_entires.first().ok_or(())?;
+	let mut value = control.get_value();
+	value.set_value(first.get_id());
+	camera
+		.set_control(id, value.into())
+		.expect("value should be validated by control description");
+	Ok(())
+}
+
+pub fn extract_controls(camera: &mut Camera, skip_exposure: bool) -> Vec<ControlManager> {
 	let available_controls = camera.get_controls();
 	let mut variants = Vec::with_capacity(available_controls.len());
 
 	for (id, cam_control) in available_controls {
-		if !CONTROLS_OF_INTEREST.contains(&id) {
+		if !CONTROLS_OF_INTEREST.contains(&id)
+			|| (id == KnownCameraControl::ExposureAbsolute && skip_exposure)
+		{
 			continue;
 		}
 		let control = ControlManager::try_from(cam_control)

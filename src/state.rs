@@ -9,7 +9,9 @@ use eframe::egui::{self, TextBuffer};
 use egui_file_dialog::FileDialog;
 
 use crate::{
-	camera_controls::{ControlManager, build_control_sweeps, extract_controls},
+	camera_controls::{
+		ControlManager, build_control_sweeps, extract_controls, try_disable_auto_exposure,
+	},
 	capture::Capture,
 	dataset::Dataset,
 	saving::Saving,
@@ -71,7 +73,8 @@ impl State {
 		self.camera = match Camera::new(index, None) {
 			Ok(mut camera) => {
 				camera.reset_controls_to_default();
-				self.controls = extract_controls(&mut camera);
+				let skip_exposure = try_disable_auto_exposure(&mut camera).is_err();
+				self.controls = extract_controls(&mut camera, skip_exposure);
 				self.requested_controls = self.controls.iter().map(|_| None).collect();
 				debug_assert_eq!(self.controls.len(), self.requested_controls.len());
 				Some(camera)
