@@ -127,6 +127,7 @@ pub enum ControlSweepType {
 	Gamma(ControlSweep<i64>),
 	Gain(ControlSweep<i64>),
 	//Sharpness(ControlSweep<i64>), // Doesn't seem to do anything.
+	ExposureAbsolute(ControlSweep<i64>),
 }
 
 impl ControlSweepType {
@@ -138,6 +139,7 @@ impl ControlSweepType {
 			Self::Hue(inner) => inner.step(),
 			Self::Gamma(inner) => inner.step(),
 			Self::Gain(inner) => inner.step(),
+			Self::ExposureAbsolute(inner) => inner.step(),
 		}
 	}
 
@@ -161,6 +163,9 @@ impl ControlSweepType {
 			Self::Gain(inner) => {
 				inner.set_to_value(camera);
 			},
+			Self::ExposureAbsolute(inner) => {
+				inner.set_to_value(camera);
+			},
 		}
 	}
 
@@ -172,6 +177,7 @@ impl ControlSweepType {
 			Self::Hue(inner) => inner.set_to_default(camera),
 			Self::Gamma(inner) => inner.set_to_default(camera),
 			Self::Gain(inner) => inner.set_to_default(camera),
+			Self::ExposureAbsolute(inner) => inner.set_to_default(camera),
 		}
 	}
 
@@ -189,6 +195,7 @@ impl ControlSweepType {
 			Self::Hue(inner) => inner.to_control_type_value(),
 			Self::Gamma(inner) => inner.to_control_type_value(),
 			Self::Gain(inner) => inner.to_control_type_value(),
+			Self::ExposureAbsolute(inner) => inner.to_control_type_value(),
 		}
 	}
 }
@@ -202,6 +209,7 @@ impl fmt::Display for ControlSweepType {
 			Self::Hue(inner) => inner.to_string(),
 			Self::Gamma(inner) => inner.to_string(),
 			Self::Gain(inner) => inner.to_string(),
+			Self::ExposureAbsolute(inner) => inner.to_string(),
 		};
 		write!(f, "{}", display_string)
 	}

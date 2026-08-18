@@ -5,13 +5,13 @@ edition = "2024"
 
 [dependencies]
 edge = { path = "edge" }
-eframe = { version = "0.35", features = [
+eframe = { version = "0.36", features = [
 	"glow"
 ] }
-egui_extras = { version = "0.35", features = [
+egui_extras = { version = "0.36", features = [
 	"image"
 ] }
-egui-file-dialog = { version = "0.14", default-features = false }
+egui-file-dialog = { version = "0.15", default-features = false }
 image = { version = "0.25", default-features = false, features = [
 	"rayon",
 	"jpeg",
@@ -21,11 +21,8 @@ image = { version = "0.25", default-features = false, features = [
 	"avif"
 ] }
 lab = "0.11"
-nokhwa = { version = "0.10", default-features = false, features = [
+nokhwa = { path = "edge/nokhwa", default-features = false, features = [
 	"input-native",
-	"decoding",
-	"serialize",
-	"output-threaded"
 ] }
 rayon = "1"
 reqwest = { version = "0.13", features = [
