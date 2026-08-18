@@ -1,5 +1,4 @@
-use core::fmt;
-use std::{fmt::Display, iter::StepBy, ops::RangeInclusive};
+use std::{fmt, iter::StepBy, ops::RangeInclusive};
 
 use edge::Camera;
 
@@ -7,7 +6,7 @@ use nokhwa::utils::{ControlValueSetter, KnownCameraControl};
 
 pub type Finished = bool;
 
-pub trait ValidControlValue: Copy + Display {}
+pub trait ValidControlValue: Copy + fmt::Display {}
 
 impl ValidControlValue for i64 {}
 
@@ -40,7 +39,7 @@ impl<T> fmt::Display for ControlTypeValue<T>
 where
 	T: ValidControlValue,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "{}: {}", self.control_type, self.current_value)
 	}
 }
@@ -113,7 +112,7 @@ impl<T> fmt::Display for ControlSweep<T>
 where
 	T: ValidControlValue,
 {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "{}: {}", self.control_type, self.current_value)
 	}
 }
@@ -201,7 +200,7 @@ impl ControlSweepType {
 }
 
 impl fmt::Display for ControlSweepType {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let display_string = match self {
 			Self::Brightness(inner) => inner.to_string(),
 			Self::Contrast(inner) => inner.to_string(),
