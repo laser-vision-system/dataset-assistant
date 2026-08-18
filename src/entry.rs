@@ -70,14 +70,14 @@ impl<'i> ParseAs for StaticLabelTextEntryBox<'_> {
 ///
 /// Needs to use a reference because it is consumed when displayed.
 #[derive(Debug)]
-pub struct OnDemandTextEntryBox<'i> {
+pub struct OnDemandTextEntryBox<'i, const N: usize> {
 	label: String,
-	state: String,
+	state: [String; N],
 	input: &'i mut String,
 }
 
-impl<'i> OnDemandTextEntryBox<'i> {
-	pub fn new(label: String, state: String, input: &'i mut String) -> Self {
+impl<'i, const N: usize> OnDemandTextEntryBox<'i, N> {
+	pub fn new(label: String, state: [String; N], input: &'i mut String) -> Self {
 		Self {
 			label,
 			state,
@@ -86,13 +86,15 @@ impl<'i> OnDemandTextEntryBox<'i> {
 	}
 }
 
-impl<'i> Entry for OnDemandTextEntryBox<'_> {
-	const ELEMENTS: usize = 3;
+impl<'i, const N: usize> Entry for OnDemandTextEntryBox<'_, N> {
+	const ELEMENTS: usize = 2 + N;
 
 	fn draw(&mut self, ui: &mut egui::Ui) -> egui::Response {
 		// Label must be created before the text entry.
 		let label_widget = ui.label(&self.label);
-		ui.label(&self.state);
+		for lbl in &self.state {
+			ui.label(lbl);
+		}
 		let text_entry = egui::TextEdit::singleline(self.input)
 			.hint_text("new value")
 			.desired_width(f32::INFINITY);
@@ -100,7 +102,7 @@ impl<'i> Entry for OnDemandTextEntryBox<'_> {
 	}
 }
 
-impl<'i> ParseAs for OnDemandTextEntryBox<'_> {
+impl<'i, const N: usize> ParseAs for OnDemandTextEntryBox<'_, N> {
 	fn input_mut(&mut self) -> &mut String {
 		self.input
 	}

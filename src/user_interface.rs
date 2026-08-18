@@ -1,6 +1,9 @@
 use edge::{
 	Camera,
-	tcam_interface::controls::{traits::ControlDescription, values::ConValueIntegerType},
+	tcam_interface::controls::{
+		traits::{ControlDefault, ControlDescription, ControlMax, ControlMin},
+		values::ConValueIntegerType,
+	},
 };
 use eframe::egui::{self, TextBuffer};
 
@@ -111,13 +114,19 @@ impl UserInterface {
 		controls: &mut Vec<&mut ControlManager>,
 		requested_controls: &mut Vec<&mut Option<ConValueIntegerType>>,
 	) {
-		let entries: Vec<OnDemandTextEntryBox> = controls
+		let entries: Vec<_> = controls
 			.into_iter()
 			.map(|manager| {
 				let label = manager.base.get_id().to_string();
-				let state = format!("{}..{} @ {}", manager.min, manager.max, manager.value);
+				let state = format!(
+					"{} | {}..{} @ {}",
+					manager.base.get_default(),
+					manager.base.get_min(),
+					manager.base.get_max(),
+					manager.value
+				);
 				let input = &mut manager.input;
-				OnDemandTextEntryBox::new(label, state, input)
+				OnDemandTextEntryBox::new(label, [state], input)
 			})
 			.collect();
 		let res: egui::InnerResponse<Vec<Option<ConValueIntegerType>>> =
