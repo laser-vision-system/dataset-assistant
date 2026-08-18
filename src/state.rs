@@ -115,15 +115,16 @@ impl State {
 				let Some(val) = value.take() else {
 					continue;
 				};
-				let id = manager.base.get_id();
-				let reason = format!("value should be valid for {}, recieved '{}'", id, val);
-				manager.base.set_value(val.into()).expect(&reason);
+				if manager.base.set_value(val.into()).is_err() {
+					continue;
+				}
 
 				let newval = manager.base.get_value();
 				manager.value = newval.get_value();
+				let id = manager.base.get_id();
 
-				cam.set_control(id, newval.into())
-					.expect("value should be validated by the controller");
+				let reason = format!("value should be valid for {}, recieved '{}'", id, val);
+				cam.set_control(id, newval.into()).expect(&reason);
 			}
 		}
 
