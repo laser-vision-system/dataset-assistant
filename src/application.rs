@@ -51,6 +51,8 @@ impl eframe::App for DatasetAssistantApp {
 					});
 				});
 
+				ui.separator();
+
 				UserInterface::add_subheading(ui, "Camera");
 
 				ui.indent("camera", |ui| {

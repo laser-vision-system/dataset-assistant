@@ -115,7 +115,7 @@ impl UserInterface {
 			.into_iter()
 			.map(|manager| {
 				let label = manager.base.get_id().to_string();
-				let state = manager.value.to_string();
+				let state = format!("{}..{} @ {}", manager.min, manager.max, manager.value);
 				let input = &mut manager.input;
 				OnDemandTextEntryBox::new(label, state, input)
 			})
