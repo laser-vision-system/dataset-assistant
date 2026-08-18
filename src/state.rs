@@ -67,6 +67,19 @@ impl State {
 			.add_subset(subset, &mut self.subset_path_label);
 	}
 
+	fn add_camera(&mut self, index: u32) {
+		self.camera = match Camera::new(index, None) {
+			Ok(mut camera) => {
+				camera.reset_controls_to_default();
+				self.controls = extract_controls(&mut camera);
+				self.requested_controls = self.controls.iter().map(|_| None).collect();
+				debug_assert_eq!(self.controls.len(), self.requested_controls.len());
+				Some(camera)
+			},
+			Err(_) => None,
+		};
+	}
+
 	pub fn execute_for_preparation(
 		&mut self,
 		capture: &mut Capture,
@@ -81,19 +94,12 @@ impl State {
 
 		if let Some(should) = self.requested_cam_index {
 			if let Some(index) = should {
-				self.camera = match Camera::new(index, None) {
-					Ok(mut camera) => {
-						camera.reset_controls_to_default();
-						self.controls = extract_controls(&mut camera);
-						self.requested_controls = self.controls.iter().map(|_| None).collect();
-						debug_assert_eq!(self.controls.len(), self.requested_controls.len());
-						Some(camera)
-					},
-					Err(_) => None,
-				};
+				self.add_camera(index);
 				self.camera_id_label.replace_with(&format!("{index}"));
 			} else {
 				self.camera = None;
+				self.controls = Vec::new();
+				self.requested_controls = Vec::new();
 				self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
 			}
 			self.requested_cam_index = None;
