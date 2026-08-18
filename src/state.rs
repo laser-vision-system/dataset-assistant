@@ -73,7 +73,13 @@ impl State {
 
 		if let Some(should) = self.requested_cam_index {
 			if let Some(index) = should {
-				self.camera = Camera::new(index, None).ok();
+				self.camera = match Camera::new(index, None) {
+					Ok(mut camera) => {
+						camera.reset_controls_to_default();
+						Some(camera)
+					},
+					Err(_) => None,
+				};
 				self.camera_id_label.replace_with(&format!("{index}"));
 			} else {
 				self.camera = None;
