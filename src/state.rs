@@ -1,10 +1,15 @@
-use edge::Camera;
+use edge::{
+	Camera,
+	tcam_interface::controls::{
+		traits::{ControlDescription, ControlValue},
+		values::ConValueIntegerType,
+	},
+};
 use eframe::egui::{self, TextBuffer};
 use egui_file_dialog::FileDialog;
-use nokhwa::utils::{ControlValueSetter, KnownCameraControl};
 
 use crate::{
-	camera_controls::build_control_sweeps,
+	camera_controls::{ControlManager, build_control_sweeps, extract_controls},
 	capture::Capture,
 	dataset::Dataset,
 	saving::Saving,
@@ -33,8 +38,11 @@ pub struct State {
 	pub requested_cam_index: Option<Option<u32>>,
 	pub live_feed: bool,
 	pub chose_folder: bool,
-	pub requested_brightness: Option<i64>,
 	pub saving_progress: String,
+	pub camera_position_input: String,
+	pub laser_intensity_input: String,
+	pub controls: Vec<ControlManager>,
+	pub requested_controls: Vec<Option<ConValueIntegerType>>,
 }
 
 impl State {
@@ -76,6 +84,9 @@ impl State {
 				self.camera = match Camera::new(index, None) {
 					Ok(mut camera) => {
 						camera.reset_controls_to_default();
+						self.controls = extract_controls(&mut camera);
+						self.requested_controls = self.controls.iter().map(|_| None).collect();
+						debug_assert_eq!(self.controls.len(), self.requested_controls.len());
 						Some(camera)
 					},
 					Err(_) => None,
@@ -88,12 +99,23 @@ impl State {
 			self.requested_cam_index = None;
 		}
 
-		if let Some(brightness) = self.requested_brightness
-			&& let Some(cam) = self.camera.as_mut()
-		{
-			let control_type = KnownCameraControl::Brightness;
-			let brightness = ControlValueSetter::Integer(brightness);
-			cam.set_control(control_type, brightness).unwrap();
+		if let Some(cam) = self.camera.as_mut() {
+			debug_assert_eq!(self.controls.len(), self.requested_controls.len());
+
+			for (manager, value) in self.controls.iter_mut().zip(&mut self.requested_controls) {
+				let Some(val) = value.take() else {
+					continue;
+				};
+				let id = manager.base.get_id();
+				let reason = format!("value should be valid for {}, recieved '{}'", id, val);
+				manager.base.set_value(val.into()).expect(&reason);
+
+				let newval = manager.base.get_value();
+				manager.value = newval.get_value();
+
+				cam.set_control(id, newval.into())
+					.expect("value should be validated by the controller");
+			}
 		}
 
 		// Capture

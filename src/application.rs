@@ -10,7 +10,6 @@ use crate::{
 /// The central egui application.
 pub struct DatasetAssistantApp {
 	state: State,
-	user_interface: UserInterface,
 	capture: Capture,
 }
 
@@ -18,7 +17,6 @@ impl DatasetAssistantApp {
 	pub fn new(ctx: &egui::Context) -> Self {
 		Self {
 			state: State::new(),
-			user_interface: Default::default(),
 			capture: Capture::new(ctx),
 		}
 	}
@@ -29,34 +27,36 @@ impl eframe::App for DatasetAssistantApp {
 		egui::Panel::left("controls").show(ui, |ui| {
 			let mut request_capture = false;
 			ui.set_width_range(CONTROLS_WIDTH_MIN..=CONTROLS_WIDTH_MAX);
-			self.user_interface.add_heading(ui);
-			self.user_interface.add_subheading(ui, "Directory");
+			UserInterface::add_heading(ui);
+			UserInterface::add_subheading(ui, "Directory");
 
 			ui.add_enabled_ui(self.state.current_state_is_preparation(), |ui| {
 				ui.indent("directory", |ui| {
 					ui.add_enabled_ui(!self.state.live_feed, |ui| {
 						ui.label(&self.state.dataset_path_label);
-						self.state.chose_folder = self.user_interface.choose_folder(ui);
+						self.state.chose_folder = UserInterface::choose_folder(ui);
 
 						ui.separator();
 
 						ui.label(&self.state.subset_path_label);
 						ui.add_enabled_ui(self.state.is_dataset(), |ui| {
-							if let Some(subset) = self.user_interface.display_subset_entry_grid(ui)
-							{
+							if let Some(subset) = UserInterface::display_subset_entry_grid(
+								ui,
+								&mut self.state.camera_position_input,
+								&mut self.state.laser_intensity_input,
+							) {
 								self.state.try_add_subset(subset);
 							}
 						});
 					});
 				});
 
-				self.user_interface.add_subheading(ui, "Camera");
+				UserInterface::add_subheading(ui, "Camera");
 
 				ui.indent("camera", |ui| {
 					ui.add_enabled_ui(!self.state.live_feed, |ui| {
-						if let Some(selection) = self
-							.user_interface
-							.camera_selection(ui, &self.state.camera_id_label)
+						if let Some(selection) =
+							UserInterface::camera_selection(ui, &self.state.camera_id_label)
 						{
 							self.state.requested_cam_index = selection;
 						}
@@ -65,30 +65,26 @@ impl eframe::App for DatasetAssistantApp {
 					ui.separator();
 
 					ui.add_enabled_ui(self.state.is_camera(), |ui| {
-						request_capture = self
-							.user_interface
-							.capture_controls(ui, &mut self.state.live_feed);
+						request_capture =
+							UserInterface::capture_controls(ui, &mut self.state.live_feed);
 
-						ui.add_enabled_ui(!self.state.live_feed, |ui| {
-							self.state.requested_brightness =
-								self.user_interface.brightness_entry(ui);
-						});
+						UserInterface::draw_controls(
+							ui,
+							&mut self.state.controls.iter_mut().collect(),
+							&mut self.state.requested_controls.iter_mut().collect(),
+						);
 					});
 				});
 
 				ui.add_space(5.0);
 
-				if self
-					.user_interface
-					.save_button(ui, self.state.is_complete())
-				{
+				if UserInterface::save_button(ui, self.state.is_complete()) {
 					self.state.try_to_collecting();
 				}
 			});
 
 			ui.add_enabled_ui(self.state.current_state_is_collecting(), |ui| {
-				self.user_interface
-					.draw_collecting(ui, &self.state.saving_progress);
+				UserInterface::draw_collecting(ui, &self.state.saving_progress);
 			});
 
 			self.state

@@ -1,8 +1,12 @@
-use edge::Camera;
-use eframe::egui;
+use edge::{
+	Camera,
+	tcam_interface::controls::{traits::ControlDescription, values::ConValueIntegerType},
+};
+use eframe::egui::{self, TextBuffer};
 
 use crate::{
-	entry::{ParseAs, SimpleEntryBox, input_grid},
+	camera_controls::ControlManager,
+	entry::{OnDemandTextEntryBox, StaticLabelTextEntryBox, input_grid_dyn, input_grid_fixed},
 	settings::{
 		HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE, SUBHEADING_FONT_SIZE,
 		SUBHEADING_FONT_SPACING,
@@ -11,15 +15,11 @@ use crate::{
 };
 
 /// The information and controls shown to the user.
-#[derive(Clone, Debug, Default)]
-pub struct UserInterface {
-	brightness_input: String,
-	camera_position_input: String,
-	laser_intensity_input: String,
-}
+#[derive(Debug, Default)]
+pub struct UserInterface;
 
 impl UserInterface {
-	pub fn add_heading(&self, ui: &mut egui::Ui) {
+	pub fn add_heading(ui: &mut egui::Ui) {
 		ui.add_space(PREHEADING_SPACE);
 		ui.label(
 			egui::RichText::new("Dataset Assistant")
@@ -29,7 +29,7 @@ impl UserInterface {
 		ui.separator();
 	}
 
-	pub fn add_subheading(&self, ui: &mut egui::Ui, text: &str) {
+	pub fn add_subheading(ui: &mut egui::Ui, text: &str) {
 		ui.add_space(5.0);
 		ui.label(
 			egui::RichText::new(text)
@@ -41,11 +41,7 @@ impl UserInterface {
 	/// First option is whether the menu is open.
 	/// Second option is whether a button was clicked.
 	/// Third option is the index.
-	pub fn camera_selection(
-		&mut self,
-		ui: &mut egui::Ui,
-		state: &str,
-	) -> Option<Option<Option<u32>>> {
+	pub fn camera_selection(ui: &mut egui::Ui, state: &str) -> Option<Option<Option<u32>>> {
 		ui.horizontal(|ui| {
 			ui.label("Selected ID:");
 			ui.label(state);
@@ -71,11 +67,11 @@ impl UserInterface {
 		.inner
 	}
 
-	pub fn choose_folder(&self, ui: &mut egui::Ui) -> bool {
+	pub fn choose_folder(ui: &mut egui::Ui) -> bool {
 		ui.button("Choose folder").clicked()
 	}
 
-	pub fn capture_controls(&mut self, ui: &mut egui::Ui, live_feed: &mut bool) -> bool {
+	pub fn capture_controls(ui: &mut egui::Ui, live_feed: &mut bool) -> bool {
 		ui.horizontal(|ui| {
 			let btn_result = ui.add_enabled(!*live_feed, egui::Button::new("Preview capture"));
 			ui.checkbox(live_feed, "Live feed");
@@ -85,39 +81,67 @@ impl UserInterface {
 		.clicked()
 	}
 
-	pub fn display_subset_entry_grid(&mut self, ui: &mut egui::Ui) -> Option<Subset> {
+	pub fn display_subset_entry_grid(
+		ui: &mut egui::Ui,
+		camera_position_input: &mut String,
+		laser_intensity_input: &mut String,
+	) -> Option<Subset> {
 		let entries = [
-			SimpleEntryBox::new("Position:", &mut self.camera_position_input),
-			SimpleEntryBox::new("Intensity:", &mut self.laser_intensity_input),
+			StaticLabelTextEntryBox::new("Position:", camera_position_input),
+			StaticLabelTextEntryBox::new("Intensity:", laser_intensity_input),
 		];
-		let res = input_grid("subset", entries, ui);
+		let res = input_grid_fixed("subset", entries, ui);
 		let trigger = res.iter().any(|r| r.lost_focus());
-		let none_empty =
-			!self.camera_position_input.is_empty() && !self.laser_intensity_input.is_empty();
+		let none_empty = !camera_position_input.is_empty() && !laser_intensity_input.is_empty();
 		if trigger && none_empty {
 			let subset = Subset::new(
-				self.camera_position_input.clone(),
-				self.laser_intensity_input.clone(),
+				camera_position_input.to_string(),
+				laser_intensity_input.to_string(),
 			);
-			self.camera_position_input = String::new();
-			self.laser_intensity_input = String::new();
+			camera_position_input.replace_with("");
+			laser_intensity_input.replace_with("");
 			Some(subset)
 		} else {
 			None
 		}
 	}
 
-	pub fn brightness_entry(&mut self, ui: &mut egui::Ui) -> Option<i64> {
-		SimpleEntryBox::new("Brightness:", &mut self.brightness_input).parse_as(ui)
+	pub fn draw_controls(
+		ui: &mut egui::Ui,
+		controls: &mut Vec<&mut ControlManager>,
+		requested_controls: &mut Vec<&mut Option<ConValueIntegerType>>,
+	) {
+		let entries: Vec<OnDemandTextEntryBox> = controls
+			.into_iter()
+			.map(|manager| {
+				let label = manager.base.get_id().to_string();
+				let state = manager.value.to_string();
+				let input = &mut manager.input;
+				OnDemandTextEntryBox::new(label, state, input)
+			})
+			.collect();
+		let res: egui::InnerResponse<Vec<Option<ConValueIntegerType>>> =
+			input_grid_dyn("controls", entries, ui);
+
+		for (response, request) in res.inner.into_iter().zip(requested_controls) {
+			match response {
+				Some(value) => {
+					request.replace(value);
+				},
+				None => {
+					let _ = request.take();
+				},
+			}
+		}
 	}
 
-	pub fn save_button(&mut self, ui: &mut egui::Ui, enabled: bool) -> bool {
+	pub fn save_button(ui: &mut egui::Ui, enabled: bool) -> bool {
 		let save_btn = egui::Button::new("Run save procedure");
 		let response = ui.add_enabled(enabled, save_btn);
 		response.clicked()
 	}
 
-	pub fn draw_collecting(&mut self, ui: &mut egui::Ui, progress: &str) {
+	pub fn draw_collecting(ui: &mut egui::Ui, progress: &str) {
 		ui.label(progress);
 	}
 }
