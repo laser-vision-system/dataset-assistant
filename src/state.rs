@@ -44,7 +44,7 @@ pub struct State {
 	pub camera_position_input: String,
 	pub laser_intensity_input: String,
 	pub controls: Vec<ControlManager>,
-	pub requested_controls: Vec<Option<ConValueIntegerType>>,
+	pub requested_controls: Option<Vec<Option<ConValueIntegerType>>>,
 }
 
 impl State {
@@ -75,8 +75,6 @@ impl State {
 				camera.reset_controls_to_default();
 				let skip_exposure = try_disable_auto_exposure(&mut camera).is_err();
 				self.controls = extract_controls(&mut camera, skip_exposure);
-				self.requested_controls = self.controls.iter().map(|_| None).collect();
-				debug_assert_eq!(self.controls.len(), self.requested_controls.len());
 				Some(camera)
 			},
 			Err(_) => None,
@@ -102,16 +100,18 @@ impl State {
 			} else {
 				self.camera = None;
 				self.controls = Vec::new();
-				self.requested_controls = Vec::new();
+				self.requested_controls.take();
 				self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
 			}
 			self.requested_cam_index = None;
 		}
 
-		if let Some(cam) = self.camera.as_mut() {
-			debug_assert_eq!(self.controls.len(), self.requested_controls.len());
+		if let Some(cam) = self.camera.as_mut()
+			&& let Some(requested_controls) = self.requested_controls.take()
+		{
+			debug_assert_eq!(self.controls.len(), requested_controls.len());
 
-			for (manager, value) in self.controls.iter_mut().zip(&mut self.requested_controls) {
+			for (mut value, manager) in requested_controls.into_iter().zip(&mut self.controls) {
 				let Some(val) = value.take() else {
 					continue;
 				};

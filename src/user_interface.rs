@@ -114,8 +114,7 @@ impl UserInterface {
 	pub fn draw_controls(
 		ui: &mut egui::Ui,
 		controls: &mut Vec<&mut ControlManager>,
-		requested_controls: &mut Vec<&mut Option<ConValueIntegerType>>,
-	) {
+	) -> Option<Vec<Option<ConValueIntegerType>>> {
 		let entries: Vec<_> = controls
 			.into_iter()
 			.map(|manager| {
@@ -133,15 +132,10 @@ impl UserInterface {
 			.collect();
 		let res: Vec<Option<ConValueIntegerType>> = input_grid_parsed_dyn("controls", entries, ui);
 
-		for (response, request) in res.into_iter().zip(requested_controls) {
-			match response {
-				Some(value) => {
-					request.replace(value);
-				},
-				None => {
-					let _ = request.take();
-				},
-			}
+		if res.iter().any(|val| val.is_some()) {
+			Some(res)
+		} else {
+			None
 		}
 	}
 

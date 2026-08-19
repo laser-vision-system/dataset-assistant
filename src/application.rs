@@ -91,10 +91,9 @@ impl eframe::App for DatasetAssistantApp {
 									});
 								}
 
-								UserInterface::draw_controls(
+								self.state.requested_controls = UserInterface::draw_controls(
 									ui,
 									&mut self.state.controls.iter_mut().collect(),
-									&mut self.state.requested_controls.iter_mut().collect(),
 								);
 							});
 						}
