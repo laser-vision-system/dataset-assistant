@@ -124,7 +124,7 @@ impl UserInterface {
 					manager.base.get_default(),
 					manager.base.get_min(),
 					manager.base.get_max(),
-					manager.value
+					manager.get_value(),
 				);
 				let input = &mut manager.input;
 				OnDemandTextEntryBox::new(label, [state], input)

@@ -29,11 +29,72 @@ const CONTROLS_OF_INTEREST: [KnownCameraControl; 7] = [
 #[derive(Debug)]
 pub struct ControlManager {
 	pub base: IntegerRangeControl,
-	pub value: ConValueIntegerType,
-	pub step: ConValueIntegerType,
-	pub min: ConValueIntegerType,
-	pub max: ConValueIntegerType,
+	value: ConValueIntegerType,
+	step: ConValueIntegerType,
+	min: ConValueIntegerType,
+	max: ConValueIntegerType,
 	pub input: String,
+}
+
+impl ControlDescription for ControlManager {
+	type ValueType = ConValueIntegerType;
+	type ConType = ConValueIntegerType;
+
+	fn get_id(&self) -> KnownCameraControl {
+		self.base.get_id()
+	}
+
+	fn set_value(&mut self, value: Self::ValueType) -> Result<(), ()> {
+		self.base.set_value(value.into())?;
+		self.value = value;
+		Ok(())
+	}
+
+	fn get_value(&self) -> Self::ValueType {
+		self.value
+	}
+}
+
+impl ControlDefault for ControlManager {
+	type DefaultType = Self::ConType;
+
+	fn get_default(&self) -> Self::DefaultType {
+		self.base.get_default()
+	}
+
+	fn reset_to_default(&mut self) {
+		self.set_value(self.get_default().into())
+			.expect("default value should never be invalid")
+	}
+}
+
+impl ControlStep for ControlManager {
+	type StepType = Self::ConType;
+
+	fn get_step(&self) -> Self::StepType {
+		self.step
+	}
+
+	fn valid(&self, value: Self::StepType) -> bool {
+		(value - self.get_default()).abs() % self.get_step() == 0
+			|| (value - self.get_value()).abs() % self.get_step() == 0
+	}
+}
+
+impl ControlMin for ControlManager {
+	type MinType = Self::ConType;
+
+	fn get_min(&self) -> Self::MinType {
+		self.min
+	}
+}
+
+impl ControlMax for ControlManager {
+	type MaxType = Self::ConType;
+
+	fn get_max(&self) -> Self::MaxType {
+		self.max
+	}
 }
 
 impl TryFrom<CamControl> for ControlManager {
