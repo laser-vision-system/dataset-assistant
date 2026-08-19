@@ -108,7 +108,7 @@ impl<'i, const N: usize> ParseAs for OnDemandTextEntryBox<'_, N> {
 	}
 }
 
-pub fn input_grid_fixed<T, const N: usize>(
+pub fn input_grid_const<T, const N: usize>(
 	grid_name: &str,
 	rows: [T; N],
 	ui: &mut egui::Ui,
@@ -128,11 +128,47 @@ where
 		.inner
 }
 
-pub fn input_grid_dyn<T, R, O>(
+pub fn input_grid_dyn<T, R>(grid_name: &str, rows: Vec<T>, ui: &mut egui::Ui) -> R
+where
+	T: Entry,
+	R: FromIterator<egui::Response>,
+{
+	egui::Grid::new(grid_name)
+		.num_columns(T::ELEMENTS)
+		.show(ui, |ui| {
+			rows.into_iter()
+				.map(|mut r| {
+					let res = r.draw(ui);
+					ui.end_row();
+					res
+				})
+				.collect()
+		})
+		.inner
+}
+
+pub fn input_grid_parsed_const<T, O, const N: usize>(
 	grid_name: &str,
-	rows: Vec<T>,
+	rows: [T; N],
 	ui: &mut egui::Ui,
-) -> egui::InnerResponse<R>
+) -> [Option<O>; N]
+where
+	T: ParseAs,
+	O: FromStr,
+{
+	egui::Grid::new(grid_name)
+		.num_columns(T::ELEMENTS)
+		.show(ui, |ui| {
+			rows.map(|mut r| {
+				let res = r.parse_as::<O>(ui);
+				ui.end_row();
+				res
+			})
+		})
+		.inner
+}
+
+pub fn input_grid_parsed_dyn<T, R, O>(grid_name: &str, rows: Vec<T>, ui: &mut egui::Ui) -> R
 where
 	T: ParseAs,
 	R: FromIterator<Option<O>>,
@@ -149,4 +185,5 @@ where
 				})
 				.collect()
 		})
+		.inner
 }

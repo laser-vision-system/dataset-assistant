@@ -9,7 +9,9 @@ use eframe::egui::{self, TextBuffer};
 
 use crate::{
 	camera_controls::ControlManager,
-	entry::{OnDemandTextEntryBox, StaticLabelTextEntryBox, input_grid_dyn, input_grid_fixed},
+	entry::{
+		OnDemandTextEntryBox, StaticLabelTextEntryBox, input_grid_const, input_grid_parsed_dyn,
+	},
 	settings::{
 		HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE, SUBHEADING_FONT_SIZE,
 		SUBHEADING_FONT_SPACING,
@@ -93,7 +95,7 @@ impl UserInterface {
 			StaticLabelTextEntryBox::new("Position:", camera_position_input),
 			StaticLabelTextEntryBox::new("Intensity:", laser_intensity_input),
 		];
-		let res = input_grid_fixed("subset", entries, ui);
+		let res = input_grid_const("subset", entries, ui);
 		let trigger = res.iter().any(|r| r.lost_focus());
 		let none_empty = !camera_position_input.is_empty() && !laser_intensity_input.is_empty();
 		if trigger && none_empty {
@@ -129,10 +131,9 @@ impl UserInterface {
 				OnDemandTextEntryBox::new(label, [state], input)
 			})
 			.collect();
-		let res: egui::InnerResponse<Vec<Option<ConValueIntegerType>>> =
-			input_grid_dyn("controls", entries, ui);
+		let res: Vec<Option<ConValueIntegerType>> = input_grid_parsed_dyn("controls", entries, ui);
 
-		for (response, request) in res.inner.into_iter().zip(requested_controls) {
+		for (response, request) in res.into_iter().zip(requested_controls) {
 			match response {
 				Some(value) => {
 					request.replace(value);
