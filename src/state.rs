@@ -1,9 +1,6 @@
 use edge::{
 	Camera,
-	tcam_interface::controls::{
-		traits::{ControlDescription, ControlValue},
-		values::ConValueIntegerType,
-	},
+	tcam_interface::controls::{traits::ControlDescription, values::ConValueIntegerType},
 };
 use eframe::egui::{self, TextBuffer};
 use egui_file_dialog::FileDialog;

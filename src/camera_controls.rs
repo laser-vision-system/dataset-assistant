@@ -29,11 +29,14 @@ const CONTROLS_OF_INTEREST: [KnownCameraControl; 7] = [
 #[derive(Debug)]
 pub struct ControlManager {
 	pub base: IntegerRangeControl,
-	value: ConValueIntegerType,
-	step: ConValueIntegerType,
-	min: ConValueIntegerType,
-	max: ConValueIntegerType,
-	pub input: String,
+	pub value: ConValueIntegerType,
+	pub step: ConValueIntegerType,
+	pub min: ConValueIntegerType,
+	pub max: ConValueIntegerType,
+	pub value_input: String,
+	pub step_input: String,
+	pub min_input: String,
+	pub max_input: String,
 }
 
 impl ControlDescription for ControlManager {
@@ -110,7 +113,10 @@ impl TryFrom<CamControl> for ControlManager {
 			step: control.get_step(),
 			min: control.get_min(),
 			max: control.get_max(),
-			input: Default::default(),
+			value_input: Default::default(),
+			step_input: Default::default(),
+			min_input: Default::default(),
+			max_input: Default::default(),
 		})
 	}
 }

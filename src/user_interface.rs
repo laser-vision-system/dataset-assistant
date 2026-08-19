@@ -1,7 +1,7 @@
 use edge::{
 	Camera,
 	tcam_interface::controls::{
-		traits::{ControlDefault, ControlDescription, ControlMax, ControlMin},
+		traits::{ControlDescription, ControlMax, ControlMin, ControlStep},
 		values::ConValueIntegerType,
 	},
 };
@@ -10,7 +10,7 @@ use eframe::egui::{self, TextBuffer};
 use crate::{
 	camera_controls::ControlManager,
 	entry::{
-		OnDemandTextEntryBox, StaticLabelTextEntryBox, input_grid_const, input_grid_parsed_dyn,
+		OnDemandTextEntryBox, StaticLabelTextEntryBox, input_grid_const, input_grid_parsed_const,
 	},
 	settings::{
 		HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE, SUBHEADING_FONT_SIZE,
@@ -111,26 +111,67 @@ impl UserInterface {
 		}
 	}
 
+	pub fn draw_for_control(
+		ui: &mut egui::Ui,
+		manager: &mut ControlManager,
+	) -> Option<ConValueIntegerType> {
+		let valstr = manager.get_value().to_string();
+		let minstr = manager.get_min().to_string();
+		let maxstr = manager.get_max().to_string();
+		let stepstr = manager.get_step().to_string();
+		let entries = [
+			OnDemandTextEntryBox::new(
+				String::from("Change value:"),
+				[valstr],
+				&mut manager.value_input,
+			),
+			// Default
+			OnDemandTextEntryBox::new(String::from("Set min:"), [minstr], &mut manager.min_input),
+			OnDemandTextEntryBox::new(String::from("Set max:"), [maxstr], &mut manager.max_input),
+			OnDemandTextEntryBox::new(
+				String::from("Set step:"),
+				[stepstr],
+				&mut manager.step_input,
+			),
+		];
+
+		let grid_label = manager.base.get_id().to_string();
+		let res = input_grid_parsed_const(&grid_label, entries, ui);
+
+		if let Some(new_min) = res[1] {
+			manager.min = new_min;
+		}
+
+		if let Some(new_max) = res[2] {
+			manager.max = new_max;
+		}
+
+		if let Some(new_step) = res[3] {
+			manager.step = new_step;
+		}
+
+		match res[0] {
+			Some(new_val) => {
+				let _ = manager.set_value(new_val);
+				Some(new_val)
+			},
+			None => None,
+		}
+	}
+
 	pub fn draw_controls(
 		ui: &mut egui::Ui,
 		controls: &mut Vec<&mut ControlManager>,
 	) -> Option<Vec<Option<ConValueIntegerType>>> {
-		let entries: Vec<_> = controls
+		let res: Vec<_> = controls
 			.into_iter()
-			.map(|manager| {
-				let label = manager.base.get_id().to_string();
-				let state = format!(
-					"{} | {}..{} @ {}",
-					manager.base.get_default(),
-					manager.base.get_min(),
-					manager.base.get_max(),
-					manager.get_value(),
-				);
-				let input = &mut manager.input;
-				OnDemandTextEntryBox::new(label, [state], input)
+			.map(|control_ref| {
+				let name = control_ref.base.get_id().to_string();
+				ui.collapsing(name, |ui| UserInterface::draw_for_control(ui, control_ref))
+					.body_returned
+					.flatten()
 			})
 			.collect();
-		let res: Vec<Option<ConValueIntegerType>> = input_grid_parsed_dyn("controls", entries, ui);
 
 		if res.iter().any(|val| val.is_some()) {
 			Some(res)

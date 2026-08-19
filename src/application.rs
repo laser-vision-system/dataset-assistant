@@ -1,4 +1,3 @@
-use edge::tcam_interface::controls::traits::ControlDescription;
 use eframe::egui;
 
 use crate::{
@@ -76,21 +75,6 @@ impl eframe::App for DatasetAssistantApp {
 
 						if self.state.is_camera() {
 							ui.collapsing("Controls:", |ui| {
-								let control_references: Vec<_> =
-									self.state.controls.iter_mut().collect();
-
-								for control_ref in control_references {
-									let name = control_ref.base.get_id().to_string();
-									ui.collapsing(name, |ui| {
-										// TODO: Do these entry boxes, maybe as a grid?
-										ui.label("Change value");
-										ui.label("Set to default");
-										ui.label("Set min");
-										ui.label("Set max");
-										ui.label("Set step");
-									});
-								}
-
 								self.state.requested_controls = UserInterface::draw_controls(
 									ui,
 									&mut self.state.controls.iter_mut().collect(),
