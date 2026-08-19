@@ -36,23 +36,31 @@ pub trait ParseAs: Entry {
 ///
 /// Needs to use a reference because it is consumed when displayed.
 #[derive(Debug)]
-pub struct StaticLabelTextEntryBox<'i> {
+pub struct StaticLabelTextEntryBox<'i, const N: usize> {
 	label: &'static str,
+	state: [String; N],
 	input: &'i mut String,
 }
 
-impl<'i> StaticLabelTextEntryBox<'i> {
-	pub fn new(label: &'static str, input: &'i mut String) -> Self {
-		Self { label, input }
+impl<'i, const N: usize> StaticLabelTextEntryBox<'i, N> {
+	pub fn new(label: &'static str, state: [String; N], input: &'i mut String) -> Self {
+		Self {
+			label,
+			state,
+			input,
+		}
 	}
 }
 
-impl<'i> Entry for StaticLabelTextEntryBox<'_> {
-	const ELEMENTS: usize = 2;
+impl<'i, const N: usize> Entry for StaticLabelTextEntryBox<'_, N> {
+	const ELEMENTS: usize = 2 + N;
 
 	fn draw(&mut self, ui: &mut egui::Ui) -> egui::Response {
 		// Label must be created before the text entry.
 		let label_widget = ui.label(self.label);
+		for lbl in &self.state {
+			ui.label(lbl);
+		}
 		let text_entry = egui::TextEdit::singleline(self.input)
 			.hint_text("new value")
 			.desired_width(f32::INFINITY);
@@ -60,7 +68,7 @@ impl<'i> Entry for StaticLabelTextEntryBox<'_> {
 	}
 }
 
-impl<'i> ParseAs for StaticLabelTextEntryBox<'_> {
+impl<'i, const N: usize> ParseAs for StaticLabelTextEntryBox<'_, N> {
 	fn input_mut(&mut self) -> &mut String {
 		self.input
 	}

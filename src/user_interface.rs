@@ -92,8 +92,8 @@ impl UserInterface {
 		laser_intensity_input: &mut String,
 	) -> Option<Subset> {
 		let entries = [
-			StaticLabelTextEntryBox::new("Position:", camera_position_input),
-			StaticLabelTextEntryBox::new("Intensity:", laser_intensity_input),
+			StaticLabelTextEntryBox::new("Position:", [], camera_position_input),
+			StaticLabelTextEntryBox::new("Intensity:", [], laser_intensity_input),
 		];
 		let res = input_grid_const("subset", entries, ui);
 		let trigger = res.iter().any(|r| r.lost_focus());
