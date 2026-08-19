@@ -1,7 +1,7 @@
 use edge::{
 	Camera,
 	tcam_interface::controls::{
-		traits::{ControlDescription, ControlMax, ControlMin, ControlStep},
+		traits::{ControlDefault, ControlDescription, ControlMax, ControlMin, ControlStep},
 		values::ConValueIntegerType,
 	},
 };
@@ -115,39 +115,52 @@ impl UserInterface {
 		ui: &mut egui::Ui,
 		manager: &mut ControlManager,
 	) -> Option<ConValueIntegerType> {
-		let valstr = manager.get_value().to_string();
-		let minstr = manager.get_min().to_string();
-		let maxstr = manager.get_max().to_string();
-		let stepstr = manager.get_step().to_string();
+		let default_label = "def:".to_string();
+		let current_label = "cur:".to_string();
+		let valstrs = [
+			default_label.clone(),
+			manager.get_default().to_string(),
+			current_label.clone(),
+			manager.get_value().to_string(),
+		];
+		let minstrs = [
+			default_label.clone(),
+			manager.get_min().to_string(),
+			current_label.clone(),
+			manager.min.to_string(),
+		];
+		let maxstrs = [
+			default_label.clone(),
+			manager.get_max().to_string(),
+			current_label.clone(),
+			manager.max.to_string(),
+		];
+		let stepstrs = [
+			default_label.clone(),
+			manager.get_step().to_string(),
+			current_label.clone(),
+			manager.step.to_string(),
+		];
 		let entries = [
-			OnDemandTextEntryBox::new(
-				String::from("Change value:"),
-				[valstr],
-				&mut manager.value_input,
-			),
-			// Default
-			OnDemandTextEntryBox::new(String::from("Set min:"), [minstr], &mut manager.min_input),
-			OnDemandTextEntryBox::new(String::from("Set max:"), [maxstr], &mut manager.max_input),
-			OnDemandTextEntryBox::new(
-				String::from("Set step:"),
-				[stepstr],
-				&mut manager.step_input,
-			),
+			OnDemandTextEntryBox::new(String::from("Value:"), valstrs, &mut manager.value_input),
+			OnDemandTextEntryBox::new(String::from("Min:"), minstrs, &mut manager.min_input),
+			OnDemandTextEntryBox::new(String::from("Max:"), maxstrs, &mut manager.max_input),
+			OnDemandTextEntryBox::new(String::from("Step:"), stepstrs, &mut manager.step_input),
 		];
 
 		let grid_label = manager.base.get_id().to_string();
 		let res = input_grid_parsed_const(&grid_label, entries, ui);
 
 		if let Some(new_min) = res[1] {
-			manager.min = new_min;
+			manager.set_min(new_min);
 		}
 
 		if let Some(new_max) = res[2] {
-			manager.max = new_max;
+			manager.set_max(new_max);
 		}
 
 		if let Some(new_step) = res[3] {
-			manager.step = new_step;
+			manager.set_step(new_step);
 		}
 
 		match res[0] {

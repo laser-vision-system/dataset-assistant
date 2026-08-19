@@ -33,10 +33,47 @@ pub struct ControlManager {
 	pub step: ConValueIntegerType,
 	pub min: ConValueIntegerType,
 	pub max: ConValueIntegerType,
+	// These have to remain public because of mutable borrowing rules.
 	pub value_input: String,
 	pub step_input: String,
 	pub min_input: String,
 	pub max_input: String,
+}
+
+impl ControlManager {
+	pub fn set_min(&mut self, min: ConValueIntegerType) {
+		if self.get_min() <= min && min < self.max {
+			self.min = min;
+		}
+	}
+
+	pub fn set_max(&mut self, max: ConValueIntegerType) {
+		if self.min < max && max <= self.get_max() {
+			self.max = max;
+		}
+	}
+
+	fn abs_deviation_from_default(&self, x: ConValueIntegerType) -> ConValueIntegerType {
+		(x - self.get_default()).abs()
+	}
+
+	pub fn set_step(&mut self, step: ConValueIntegerType) {
+		if step <= 0 {
+			return;
+		}
+
+		let min_deviation = self.abs_deviation_from_default(self.get_min());
+		let max_deviation = self.abs_deviation_from_default(self.get_max());
+		let total_range = min_deviation + max_deviation;
+		if step > total_range {
+			return;
+		}
+
+		let multiple_of_base_step = step % self.get_step() == 0;
+		if multiple_of_base_step {
+			self.step = step;
+		}
+	}
 }
 
 impl ControlDescription for ControlManager {
@@ -75,7 +112,7 @@ impl ControlStep for ControlManager {
 	type StepType = Self::ConType;
 
 	fn get_step(&self) -> Self::StepType {
-		self.step
+		self.base.get_step()
 	}
 
 	fn valid(&self, value: Self::StepType) -> bool {
@@ -88,7 +125,7 @@ impl ControlMin for ControlManager {
 	type MinType = Self::ConType;
 
 	fn get_min(&self) -> Self::MinType {
-		self.min
+		self.base.get_min()
 	}
 }
 
@@ -96,7 +133,7 @@ impl ControlMax for ControlManager {
 	type MaxType = Self::ConType;
 
 	fn get_max(&self) -> Self::MaxType {
-		self.max
+		self.base.get_max()
 	}
 }
 
