@@ -148,8 +148,14 @@ impl UserInterface {
 			OnDemandTextEntryBox::new(String::from("Step:"), stepstrs, &mut manager.step_input),
 		];
 
+		ui.checkbox(&mut manager.enable, "Active");
+
 		let grid_label = manager.base.get_id().to_string();
-		let res = input_grid_parsed_const(&grid_label, entries, ui);
+		let res = ui
+			.add_enabled_ui(manager.enable, |ui| {
+				input_grid_parsed_const(&grid_label, entries, ui)
+			})
+			.inner;
 
 		if let Some(new_min) = res[1] {
 			manager.set_min(new_min);

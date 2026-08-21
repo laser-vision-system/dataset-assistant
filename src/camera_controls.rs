@@ -33,6 +33,7 @@ pub struct ControlManager {
 	pub step: ConValueIntegerType,
 	pub min: ConValueIntegerType,
 	pub max: ConValueIntegerType,
+	pub enable: bool,
 	// These have to remain public because of mutable borrowing rules.
 	pub value_input: String,
 	pub step_input: String,
@@ -150,6 +151,7 @@ impl TryFrom<CamControl> for ControlManager {
 			step: control.get_step(),
 			min: control.get_min(),
 			max: control.get_max(),
+			enable: true,
 			value_input: Default::default(),
 			step_input: Default::default(),
 			min_input: Default::default(),
@@ -204,6 +206,12 @@ pub fn extract_controls(camera: &mut Camera, skip_exposure: bool) -> Vec<Control
 pub fn build_control_sweeps(controls: &Vec<ControlManager>) -> Vec<ControlSweep> {
 	controls
 		.iter()
-		.map(|control| control.clone().into())
+		.filter_map(|control| {
+			if control.enable {
+				Some(control.clone().into())
+			} else {
+				None
+			}
+		})
 		.collect()
 }
