@@ -56,7 +56,7 @@ impl Saving {
 				.details
 				.push_str(&format!("{}\n", sweep.to_string()));
 			let value = sweep.to_control_type_value().get_value().to_string();
-			val_strs.short.push_str(&value);
+			val_strs.short.push_str(&format!("_{}", value));
 		}
 
 		progress.replace_with(&val_strs.details);
@@ -98,13 +98,13 @@ impl Saving {
 		capture.store_image(image);
 		let mut img_filepath = self.path.clone();
 		img_filepath.push(format!(
-			"{}_{}.{}",
+			"{}{}.{}",
 			FILE_NAME_BASE, value_strings.short, IMAGE_EXTENSION
 		));
 		capture.save_to_file(&img_filepath);
 		let mut meta_filepath = self.path.clone();
 		meta_filepath.push(format!(
-			"{}_{}.{}",
+			"{}{}.{}",
 			FILE_NAME_BASE, value_strings.short, META_EXTENSION
 		));
 		let mut output = File::create_new(meta_filepath).unwrap();
