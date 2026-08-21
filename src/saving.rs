@@ -1,39 +1,41 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
-use edge::Camera;
+use edge::{Camera, tcam_interface::controls::traits::ControlValue};
 use eframe::egui::TextBuffer;
 
 use crate::{
 	capture::Capture,
 	settings::{FILE_NAME_BASE, IMAGE_EXTENSION, META_EXTENSION},
-	sweep::{ControlSweepType, Finished},
+	sweep::{ControlSweep, Finished},
 };
 
-const STRING_LENGTH: usize = 100;
+const EXPECTED_CONTROL_LENGTH: usize = 19;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 struct ValueStrings {
+	/// Id and value.
 	details: String,
+	/// Just the value.
 	short: String,
 }
 
 impl ValueStrings {
-	pub fn new() -> Self {
+	pub fn with_capacity(capacity: usize) -> Self {
 		Self {
-			details: String::with_capacity(STRING_LENGTH),
-			short: String::with_capacity(STRING_LENGTH),
+			details: String::with_capacity(capacity * EXPECTED_CONTROL_LENGTH),
+			short: String::with_capacity(capacity * EXPECTED_CONTROL_LENGTH),
 		}
 	}
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct Saving {
 	path: PathBuf,
-	control_sweeps: Vec<ControlSweepType>,
+	control_sweeps: Vec<ControlSweep>,
 }
 
 impl Saving {
-	pub fn new(path: PathBuf, control_sweeps: Vec<ControlSweepType>) -> Self {
+	pub fn new(path: PathBuf, control_sweeps: Vec<ControlSweep>) -> Self {
 		Self {
 			path,
 			control_sweeps,
@@ -47,21 +49,21 @@ impl Saving {
 		capture: &mut Capture,
 		progress: &mut String,
 	) -> Finished {
-		let val_strs: ValueStrings =
-			self.control_sweeps
-				.iter()
-				.fold(ValueStrings::new(), |mut acc, sweep| {
-					let ctv = sweep.to_control_type_value();
-					acc.details.push_str(&format!("{}\n", ctv.to_string()));
-					acc.short.push_str(&ctv.current_value().to_string());
-					acc
-				});
+		let mut val_strs = ValueStrings::with_capacity(self.control_sweeps.len());
+		for sweep in &mut self.control_sweeps {
+			sweep.apply_current(camera);
+			val_strs
+				.details
+				.push_str(&format!("{}\n", sweep.to_string()));
+			let value = sweep.to_control_type_value().get_value().to_string();
+			val_strs.short.push_str(&value);
+		}
 
 		progress.replace_with(&val_strs.details);
 		self.save_once(camera, capture, val_strs);
 
 		// Increment controls for the next pass.
-		if self.increment_controls(camera) {
+		if self.increment_controls() {
 			self.set_to_defaults(camera);
 			return true;
 		}
@@ -70,21 +72,15 @@ impl Saving {
 
 	/// Set all camera controls to their defaults.
 	fn set_to_defaults(&mut self, camera: &mut Camera) {
-		for sweep_types in &self.control_sweeps {
+		for sweep_types in &mut self.control_sweeps {
 			sweep_types.apply_default(camera)
 		}
 	}
 
-	fn increment_controls(&mut self, camera: &mut Camera) -> Finished {
-		for i in (0..self.control_sweeps.len()).rev() {
-			if self.control_sweeps[i].step() {
-				self.control_sweeps[i].apply_current(camera);
-			} else {
-				self.control_sweeps[i].apply_current(camera);
-				return false;
-			}
-		}
-		true
+	/// Step once through each sweep in reverse order, short circuiting when a step reports that the sweep has not completed.
+	/// When all steps report that they have finished, then so too does this method.
+	fn increment_controls(&mut self) -> Finished {
+		self.control_sweeps.iter_mut().rev().all(|c| c.step())
 	}
 
 	fn save_once(

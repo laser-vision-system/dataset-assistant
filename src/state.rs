@@ -162,10 +162,7 @@ impl State {
 		let path = self.dataset.as_mut().unwrap().try_create_path();
 		match path {
 			Ok(path) => {
-				let Some(cam) = self.camera.as_mut() else {
-					return;
-				};
-				let control_sweeps = build_control_sweeps(cam);
+				let control_sweeps = build_control_sweeps(&mut self.controls);
 				let saving = Saving::new(path, control_sweeps);
 				self.stage = Stage::Collecting(saving);
 			},
