@@ -178,7 +178,7 @@ pub fn try_disable_auto_exposure(camera: &mut Camera) -> Result<(), ()> {
 	let mut value = control.get_value();
 	value.set_value(first.get_id());
 	camera
-		.set_control(id, value.into())
+		.set_control(id, value)
 		.expect("value should be validated by control description");
 	Ok(())
 }

@@ -119,7 +119,7 @@ impl State {
 				let id = manager.get_id();
 				let newval = manager.base.get_value();
 				let reason = format!("value should be valid for {}, recieved '{}'", id, val);
-				cam.set_control(id, newval.into()).expect(&reason);
+				cam.set_control(id, newval).expect(&reason);
 			}
 		}
 
