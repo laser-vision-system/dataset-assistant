@@ -14,16 +14,16 @@ use nokhwa::utils::{KnownCameraControl, MenuItem};
 
 use crate::sweep::ControlSweep;
 
-const CONTROLS_OF_INTEREST: [KnownCameraControl; 7] = [
+const CONTROLS_OF_INTEREST: [KnownCameraControl; 8] = [
 	KnownCameraControl::Brightness,
 	KnownCameraControl::Contrast,
 	KnownCameraControl::Saturation,
 	KnownCameraControl::Hue,
 	KnownCameraControl::Gamma,
 	KnownCameraControl::Gain,
-	//KnownCameraControl::Sharpness, // Doesn't seem to do anything.
+	KnownCameraControl::Sharpness, // Doesn't seem to do anything.
 	KnownCameraControl::ExposureAbsolute,
-	//KnownCameraControl::AutoExposure, // Menu type not supported.
+	// TODO: White balance.
 ];
 
 #[derive(Clone, Debug)]
