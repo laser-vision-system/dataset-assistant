@@ -111,7 +111,10 @@ impl UserInterface {
 		}
 	}
 
-	pub fn draw_for_control(
+	/// Draw a section for a single control.
+	///
+	/// IDEA: Could use [`egui::DragValue`] or [`egui::Slider`]. Would require a large amount of work to validate data before applying it.
+	fn draw_for_control(
 		ui: &mut egui::Ui,
 		manager: &mut ControlManager,
 	) -> Option<ConValueIntegerType> {
