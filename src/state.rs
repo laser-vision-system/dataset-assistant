@@ -1,6 +1,6 @@
-use edge::{
+use edge::tcam_interface::{
 	Camera,
-	tcam_interface::controls::{traits::ControlDescription, values::ConValueIntegerType},
+	controls::{traits::ControlDescription, values::ConValueIntegerType},
 };
 use eframe::egui::{self, TextBuffer};
 use egui_file_dialog::FileDialog;
@@ -67,7 +67,7 @@ impl State {
 	}
 
 	fn add_camera(&mut self, index: u32) {
-		self.camera = match Camera::new(index, None) {
+		self.camera = match Camera::new(index) {
 			Ok(mut camera) => {
 				camera.reset_controls_to_default();
 				let skip_exposure = try_disable_auto_exposure(&mut camera).is_err();

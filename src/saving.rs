@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
-use edge::{Camera, tcam_interface::controls::traits::ControlValue};
+use edge::tcam_interface::{Camera, controls::traits::ControlValue};
 use eframe::egui::TextBuffer;
 
 use crate::{

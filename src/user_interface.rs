@@ -1,6 +1,6 @@
-use edge::{
+use edge::tcam_interface::{
 	Camera,
-	tcam_interface::controls::{
+	controls::{
 		traits::{ControlDefault, ControlDescription, ControlMax, ControlMin, ControlStep},
 		values::ConValueIntegerType,
 	},

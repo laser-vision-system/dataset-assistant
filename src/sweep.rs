@@ -1,8 +1,8 @@
 use std::{fmt, iter::StepBy, ops::RangeInclusive};
 
-use edge::{
+use edge::tcam_interface::{
 	Camera,
-	tcam_interface::controls::{
+	controls::{
 		traits::{ControlDefault, ControlDescription},
 		values::{ConValueInteger, ConValueIntegerType},
 	},
