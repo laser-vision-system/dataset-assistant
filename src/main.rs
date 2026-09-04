@@ -81,6 +81,7 @@ use application::DatasetAssistantApp;
 
 mod camera_controls;
 mod capture;
+mod csv_builder;
 mod dataset;
 mod entry;
 mod saving;

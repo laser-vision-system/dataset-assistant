@@ -76,6 +76,11 @@ impl UserInterface {
 		ui.button("Choose folder").clicked()
 	}
 
+	pub fn build_csv_button(ui: &mut egui::Ui) -> bool {
+		let response = ui.button("Build csv");
+		response.clicked()
+	}
+
 	pub fn capture_controls(ui: &mut egui::Ui, live_feed: &mut bool) -> bool {
 		ui.horizontal(|ui| {
 			let btn_result = ui.add_enabled(!*live_feed, egui::Button::new("Preview capture"));

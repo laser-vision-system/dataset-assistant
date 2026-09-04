@@ -10,6 +10,7 @@ use crate::{
 		ControlManager, build_control_sweeps, extract_controls, try_disable_auto_exposure,
 	},
 	capture::Capture,
+	csv_builder::CSVBuilder,
 	dataset::Dataset,
 	saving::Saving,
 	settings::{DEFAULT_CAMERA_LABEL, DEFAULT_PATH_LABEL, DEFAULT_SUBSET_LABEL},
@@ -22,6 +23,7 @@ enum Stage {
 	#[default]
 	Preparation,
 	Collecting(Saving),
+	BuildingCSV(CSVBuilder),
 }
 
 /// Internal program state.
@@ -42,6 +44,7 @@ pub struct State {
 	pub laser_intensity_input: String,
 	pub controls: Vec<ControlManager>,
 	pub requested_controls: Option<Vec<Option<ConValueIntegerType>>>,
+	pub should_build_csv: Option<()>,
 }
 
 impl State {
@@ -85,6 +88,13 @@ impl State {
 		request_capture: bool,
 	) {
 		if !self.current_state_is_preparation() {
+			return;
+		}
+
+		if let Some(dataset) = self.dataset.as_ref()
+			&& let Some(()) = self.should_build_csv.take()
+		{
+			self.stage = Stage::BuildingCSV(CSVBuilder::new(dataset.get_root().to_path_buf()));
 			return;
 		}
 
@@ -159,6 +169,20 @@ impl State {
 		}
 	}
 
+	pub fn execute_for_building_csv(&mut self) {
+		let Stage::BuildingCSV(builder) = &mut self.stage else {
+			return;
+		};
+
+		if let Some(handle) = builder.is_done() {
+			handle
+				.join()
+				.err()
+				.inspect(|e| eprintln!("csv_builder returned with error: {e:?}"));
+			self.stage = Stage::Preparation;
+		}
+	}
+
 	pub fn try_to_collecting(&mut self) {
 		debug_assert!(self.is_complete());
 		let path = self.dataset.as_mut().unwrap().try_create_path();
@@ -178,6 +202,11 @@ impl State {
 
 	pub fn current_state_is_collecting(&self) -> bool {
 		matches!(self.stage, Stage::Collecting(_))
+	}
+
+	#[allow(dead_code)]
+	pub fn current_state_is_building_csv(&self) -> bool {
+		matches!(self.stage, Stage::BuildingCSV(_))
 	}
 
 	pub fn is_complete(&self) -> bool {

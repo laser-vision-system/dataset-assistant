@@ -42,6 +42,9 @@ impl eframe::App for DatasetAssistantApp {
 
 							ui.label(&self.state.subset_path_label);
 							ui.add_enabled_ui(self.state.is_dataset(), |ui| {
+								self.state.should_build_csv =
+									UserInterface::build_csv_button(ui).then(|| ());
+
 								if let Some(subset) = UserInterface::display_subset_entry_grid(
 									ui,
 									&mut self.state.camera_position_input,
@@ -98,6 +101,8 @@ impl eframe::App for DatasetAssistantApp {
 					.execute_for_preparation(&mut self.capture, ui, request_capture);
 
 				self.state.execute_for_collecting(&mut self.capture);
+
+				self.state.execute_for_building_csv();
 
 				if self.state.live_feed
 					|| request_capture
