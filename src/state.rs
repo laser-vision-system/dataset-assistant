@@ -90,17 +90,19 @@ impl State {
 
 		// Camera
 
-		if let Some(should) = self.requested_cam_index {
-			if let Some(index) = should {
-				self.add_camera(index);
-				self.camera_id_label.replace_with(&format!("{index}"));
-			} else {
-				self.camera = None;
-				self.controls = Vec::new();
-				self.requested_controls.take();
-				self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
+		if let Some(should) = self.requested_cam_index.take() {
+			match should {
+				Some(index) => {
+					self.add_camera(index);
+					self.camera_id_label.replace_with(&format!("{index}"));
+				},
+				None => {
+					self.camera = None;
+					self.controls = Vec::new();
+					self.requested_controls.take();
+					self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
+				},
 			}
-			self.requested_cam_index = None;
 		}
 
 		if let Some(cam) = self.camera.as_mut()
