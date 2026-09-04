@@ -178,7 +178,7 @@ impl State {
 			handle
 				.join()
 				.err()
-				.inspect(|e| eprintln!("csv_builder returned with error: {e:?}"));
+				.inspect(|e| eprintln!("csv_builder returned with error: {e}"));
 			self.stage = Stage::Preparation;
 		}
 	}
