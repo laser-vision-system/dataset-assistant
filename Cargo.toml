@@ -4,6 +4,7 @@ version = "0.1.1"
 edition = "2024"
 
 [dependencies]
+csv = "1.4"
 edge = { path = "edge" }
 eframe = { version = "0.36", features = [
 	"glow"
@@ -32,6 +33,7 @@ reqwest = { version = "0.13", features = [
 serde = { version = "1" , features = [
 	"derive"
 ] }
+walkdir = "2.5"
 winit = "0.30"
 
 [lints.rust]

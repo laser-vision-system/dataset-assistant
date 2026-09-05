@@ -105,6 +105,10 @@ impl Dataset {
 	pub fn is_subset(&self) -> bool {
 		self.subset.is_some()
 	}
+
+	pub fn get_root(&self) -> &Path {
+		&self.root
+	}
 }
 
 impl Display for Dataset {
