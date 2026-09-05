@@ -76,9 +76,24 @@ impl UserInterface {
 		ui.button("Choose folder").clicked()
 	}
 
-	pub fn build_csv_button(ui: &mut egui::Ui) -> bool {
-		let response = ui.button("Build csv");
-		response.clicked()
+	pub fn build_csv_selection(ui: &mut egui::Ui) -> Option<Option<u8>> {
+		ui.horizontal(|ui| {
+			ui.menu_button("Build CSV", |ui| {
+				if ui.button("Standard").clicked() {
+					ui.close();
+					return Some(1);
+				}
+
+				if ui.button("Legacy").clicked() {
+					ui.close();
+					return Some(0);
+				}
+
+				None
+			})
+			.inner
+		})
+		.inner
 	}
 
 	pub fn capture_controls(ui: &mut egui::Ui, live_feed: &mut bool) -> bool {

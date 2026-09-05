@@ -10,7 +10,7 @@ use crate::{
 		ControlManager, build_control_sweeps, extract_controls, try_disable_auto_exposure,
 	},
 	capture::Capture,
-	csv_builder::CSVBuilder,
+	csv_builder::{CSVBuilder, Version},
 	dataset::Dataset,
 	saving::Saving,
 	settings::{DEFAULT_CAMERA_LABEL, DEFAULT_PATH_LABEL, DEFAULT_SUBSET_LABEL},
@@ -23,7 +23,7 @@ enum Stage {
 	#[default]
 	Preparation,
 	Collecting(Saving),
-	BuildingCSV(CSVBuilder),
+	BuildingCSV(Box<dyn CSVBuilder>),
 }
 
 /// Internal program state.
@@ -44,7 +44,7 @@ pub struct State {
 	pub laser_intensity_input: String,
 	pub controls: Vec<ControlManager>,
 	pub requested_controls: Option<Vec<Option<ConValueIntegerType>>>,
-	pub should_build_csv: Option<()>,
+	pub should_build_csv: Option<u8>,
 }
 
 impl State {
@@ -92,9 +92,12 @@ impl State {
 		}
 
 		if let Some(dataset) = self.dataset.as_ref()
-			&& let Some(()) = self.should_build_csv.take()
+			&& let Some(version) = self.should_build_csv.take()
 		{
-			self.stage = Stage::BuildingCSV(CSVBuilder::new(dataset.get_root().to_path_buf()));
+			let root_path = dataset.get_root().to_path_buf();
+			let builder = Version::try_new(version, root_path)
+				.expect("`build_csv_selection` should only output 0 or 1");
+			self.stage = Stage::BuildingCSV(builder.into());
 			return;
 		}
 

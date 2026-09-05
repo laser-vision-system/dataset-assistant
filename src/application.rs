@@ -42,8 +42,9 @@ impl eframe::App for DatasetAssistantApp {
 
 							ui.label(&self.state.subset_path_label);
 							ui.add_enabled_ui(self.state.is_dataset(), |ui| {
-								self.state.should_build_csv =
-									UserInterface::build_csv_button(ui).then(|| ());
+								if let Some(selection) = UserInterface::build_csv_selection(ui) {
+									self.state.should_build_csv = selection;
+								}
 
 								if let Some(subset) = UserInterface::display_subset_entry_grid(
 									ui,
