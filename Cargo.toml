@@ -33,6 +33,7 @@ reqwest = { version = "0.13", features = [
 serde = { version = "1" , features = [
 	"derive"
 ] }
+walkdir = "2.5"
 winit = "0.30"
 
 [lints.rust]
