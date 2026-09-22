@@ -43,7 +43,9 @@ impl ControlSweep {
 		self.control.base.get_value()
 	}
 
-	fn create_range(manager: &ControlManager) -> StepBy<RangeInclusive<ConValueIntegerType>> {
+	fn create_range(
+		manager: &ControlManager,
+	) -> StepBy<RangeInclusive<ConValueIntegerType>> {
 		(manager.min..=manager.max).step_by(manager.step as usize)
 	}
 

@@ -1,7 +1,10 @@
 use edge::tcam_interface::{
 	CameraDevice,
 	controls::{
-		traits::{ControlDefault, ControlDescription, ControlMax, ControlMin, ControlStep},
+		traits::{
+			ControlDefault, ControlDescription, ControlMax, ControlMin,
+			ControlStep,
+		},
 		values::ConValueIntegerType,
 	},
 };
@@ -10,11 +13,12 @@ use eframe::egui::{self, TextBuffer};
 use crate::{
 	camera_controls::ControlManager,
 	entry::{
-		OnDemandTextEntryBox, StaticLabelTextEntryBox, input_grid_const, input_grid_parsed_const,
+		OnDemandTextEntryBox, StaticLabelTextEntryBox, input_grid_const,
+		input_grid_parsed_const,
 	},
 	settings::{
-		HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE, SUBHEADING_FONT_SIZE,
-		SUBHEADING_FONT_SPACING,
+		HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE,
+		SUBHEADING_FONT_SIZE, SUBHEADING_FONT_SPACING,
 	},
 	subset::Subset,
 };
@@ -46,7 +50,10 @@ impl UserInterface {
 	/// First option is whether the menu is open.
 	/// Second option is whether a button was clicked.
 	/// Third option is the index.
-	pub fn camera_selection(ui: &mut egui::Ui, state: &str) -> Option<Option<Option<u32>>> {
+	pub fn camera_selection(
+		ui: &mut egui::Ui,
+		state: &str,
+	) -> Option<Option<Option<u32>>> {
 		ui.horizontal(|ui| {
 			ui.label("Selected ID:");
 			ui.label(state);
@@ -98,7 +105,8 @@ impl UserInterface {
 
 	pub fn capture_controls(ui: &mut egui::Ui, live_feed: &mut bool) -> bool {
 		ui.horizontal(|ui| {
-			let btn_result = ui.add_enabled(!*live_feed, egui::Button::new("Preview capture"));
+			let btn_result = ui
+				.add_enabled(!*live_feed, egui::Button::new("Preview capture"));
 			ui.checkbox(live_feed, "Live feed");
 			btn_result
 		})
@@ -112,12 +120,21 @@ impl UserInterface {
 		laser_intensity_input: &mut String,
 	) -> Option<Subset> {
 		let entries = [
-			StaticLabelTextEntryBox::new("Position:", [], camera_position_input),
-			StaticLabelTextEntryBox::new("Intensity:", [], laser_intensity_input),
+			StaticLabelTextEntryBox::new(
+				"Position:",
+				[],
+				camera_position_input,
+			),
+			StaticLabelTextEntryBox::new(
+				"Intensity:",
+				[],
+				laser_intensity_input,
+			),
 		];
 		let res = input_grid_const("subset", entries, ui);
 		let trigger = res.iter().any(|r| r.lost_focus());
-		let none_empty = !camera_position_input.is_empty() && !laser_intensity_input.is_empty();
+		let none_empty = !camera_position_input.is_empty()
+			&& !laser_intensity_input.is_empty();
 		if trigger && none_empty {
 			let subset = Subset::new(
 				camera_position_input.to_string(),
@@ -133,7 +150,8 @@ impl UserInterface {
 
 	/// Draw a section for a single control.
 	///
-	/// IDEA: Could use [`egui::DragValue`] or [`egui::Slider`]. Would require a large amount of work to validate data before applying it.
+	/// IDEA: Could use [`egui::DragValue`] or [`egui::Slider`]. Would require a
+	/// large amount of work to validate data before applying it.
 	fn draw_for_control(
 		ui: &mut egui::Ui,
 		manager: &mut ControlManager,
@@ -165,10 +183,26 @@ impl UserInterface {
 			manager.step.to_string(),
 		];
 		let entries = [
-			OnDemandTextEntryBox::new(String::from("Value:"), valstrs, &mut manager.value_input),
-			OnDemandTextEntryBox::new(String::from("Min:"), minstrs, &mut manager.min_input),
-			OnDemandTextEntryBox::new(String::from("Max:"), maxstrs, &mut manager.max_input),
-			OnDemandTextEntryBox::new(String::from("Step:"), stepstrs, &mut manager.step_input),
+			OnDemandTextEntryBox::new(
+				String::from("Value:"),
+				valstrs,
+				&mut manager.value_input,
+			),
+			OnDemandTextEntryBox::new(
+				String::from("Min:"),
+				minstrs,
+				&mut manager.min_input,
+			),
+			OnDemandTextEntryBox::new(
+				String::from("Max:"),
+				maxstrs,
+				&mut manager.max_input,
+			),
+			OnDemandTextEntryBox::new(
+				String::from("Step:"),
+				stepstrs,
+				&mut manager.step_input,
+			),
 		];
 
 		ui.checkbox(&mut manager.enable, "Active");
@@ -209,9 +243,11 @@ impl UserInterface {
 			.into_iter()
 			.map(|control_ref| {
 				let name = control_ref.base.get_id().to_string();
-				ui.collapsing(name, |ui| UserInterface::draw_for_control(ui, control_ref))
-					.body_returned
-					.flatten()
+				ui.collapsing(name, |ui| {
+					UserInterface::draw_for_control(ui, control_ref)
+				})
+				.body_returned
+				.flatten()
 			})
 			.collect();
 

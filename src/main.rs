@@ -8,8 +8,10 @@
 //!
 //! The intended functionality of this program is for the user to:
 //!
-//! - First set the camera up in the intended location and measure the laser intensity.
-//! - Within this app, choose an output directory; it will likely be a sequentially numbered folder.
+//! - First set the camera up in the intended location and measure the laser
+//!   intensity.
+//! - Within this app, choose an output directory; it will likely be a
+//!   sequentially numbered folder.
 //! - Provide a named identifier for the camera position.
 //! - Enter the current measured laser intensity.
 //!
@@ -103,7 +105,8 @@ fn main() -> eframe::Result {
 	let options = NativeOptions {
 		event_loop_builder,
 		renderer: Renderer::Glow,
-		viewport: ViewportBuilder::default().with_inner_size([WINDOW_WIDTH, WINDOW_HEIGHT]),
+		viewport: ViewportBuilder::default()
+			.with_inner_size([WINDOW_WIDTH, WINDOW_HEIGHT]),
 		..NativeOptions::default()
 	};
 

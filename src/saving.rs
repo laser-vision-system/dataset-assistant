@@ -49,7 +49,8 @@ impl Saving {
 		capture: &mut Capture,
 		progress: &mut String,
 	) -> Finished {
-		let mut val_strs = ValueStrings::with_capacity(self.control_sweeps.len());
+		let mut val_strs =
+			ValueStrings::with_capacity(self.control_sweeps.len());
 		for sweep in &mut self.control_sweeps {
 			sweep.apply_current(camera);
 			val_strs
@@ -77,8 +78,9 @@ impl Saving {
 		}
 	}
 
-	/// Step once through each sweep in reverse order, short circuiting when a step reports that the sweep has not completed.
-	/// When all steps report that they have finished, then so too does this method.
+	/// Step once through each sweep in reverse order, short circuiting when a
+	/// step reports that the sweep has not completed. When all steps report
+	/// that they have finished, then so too does this method.
 	fn increment_controls(&mut self) -> Finished {
 		self.control_sweeps.iter_mut().rev().all(|c| c.step())
 	}

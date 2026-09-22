@@ -45,7 +45,11 @@ pub struct StaticLabelTextEntryBox<'i, const N: usize> {
 }
 
 impl<'i, const N: usize> StaticLabelTextEntryBox<'i, N> {
-	pub fn new(label: &'static str, state: [String; N], input: &'i mut String) -> Self {
+	pub fn new(
+		label: &'static str,
+		state: [String; N],
+		input: &'i mut String,
+	) -> Self {
 		Self {
 			label,
 			state,
@@ -87,7 +91,11 @@ pub struct OnDemandTextEntryBox<'i, const N: usize> {
 }
 
 impl<'i, const N: usize> OnDemandTextEntryBox<'i, N> {
-	pub fn new(label: String, state: [String; N], input: &'i mut String) -> Self {
+	pub fn new(
+		label: String,
+		state: [String; N],
+		input: &'i mut String,
+	) -> Self {
 		Self {
 			label,
 			state,
@@ -138,7 +146,11 @@ where
 		.inner
 }
 
-pub fn input_grid_dyn<T, R>(grid_name: &str, rows: Vec<T>, ui: &mut egui::Ui) -> R
+pub fn input_grid_dyn<T, R>(
+	grid_name: &str,
+	rows: Vec<T>,
+	ui: &mut egui::Ui,
+) -> R
 where
 	T: Entry,
 	R: FromIterator<egui::Response>,
@@ -178,7 +190,11 @@ where
 		.inner
 }
 
-pub fn input_grid_parsed_dyn<T, R, O>(grid_name: &str, rows: Vec<T>, ui: &mut egui::Ui) -> R
+pub fn input_grid_parsed_dyn<T, R, O>(
+	grid_name: &str,
+	rows: Vec<T>,
+	ui: &mut egui::Ui,
+) -> R
 where
 	T: ParseAs,
 	R: FromIterator<Option<O>>,

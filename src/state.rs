@@ -7,13 +7,16 @@ use egui_file_dialog::FileDialog;
 
 use crate::{
 	camera_controls::{
-		ControlManager, build_control_sweeps, extract_controls, try_disable_auto_exposure,
+		ControlManager, build_control_sweeps, extract_controls,
+		try_disable_auto_exposure,
 	},
 	capture::Capture,
 	csv_builder::{CSVBuilder, Version},
 	dataset::Dataset,
 	saving::Saving,
-	settings::{DEFAULT_CAMERA_LABEL, DEFAULT_PATH_LABEL, DEFAULT_SUBSET_LABEL},
+	settings::{
+		DEFAULT_CAMERA_LABEL, DEFAULT_PATH_LABEL, DEFAULT_SUBSET_LABEL,
+	},
 	subset::Subset,
 };
 
@@ -57,9 +60,10 @@ impl State {
 		}
 	}
 
-	//pub fn get_state_label(&self) -> String {
-	//	// TODO: Replace this will a proper breakdown of the current program state.
-	//	format!("{}\n{}", self.dataset_path_label, self.subset_path_label)
+	// pub fn get_state_label(&self) -> String {
+	// 	// TODO: Replace this will a proper breakdown of the current program
+	// state. 	format!("{}\n{}", self.dataset_path_label,
+	// self.subset_path_label)
 	//}
 
 	pub fn try_add_subset(&mut self, subset: Subset) {
@@ -74,7 +78,8 @@ impl State {
 		self.camera = match CameraDevice::new(index) {
 			Ok(mut camera) => {
 				camera.reset_controls_to_default();
-				let skip_exposure = try_disable_auto_exposure(&mut camera).is_err();
+				let skip_exposure =
+					try_disable_auto_exposure(&mut camera).is_err();
 				self.controls = extract_controls(&mut camera, skip_exposure);
 				Some(camera)
 			},
@@ -124,7 +129,9 @@ impl State {
 		{
 			debug_assert_eq!(self.controls.len(), requested_controls.len());
 
-			for (mut value, manager) in requested_controls.into_iter().zip(&mut self.controls) {
+			for (mut value, manager) in
+				requested_controls.into_iter().zip(&mut self.controls)
+			{
 				let Some(val) = value.take() else {
 					continue;
 				};
@@ -134,7 +141,10 @@ impl State {
 
 				let id = manager.get_id();
 				let newval = manager.base.get_value();
-				let reason = format!("value should be valid for {}, recieved '{}'", id, val);
+				let reason = format!(
+					"value should be valid for {}, recieved '{}'",
+					id, val
+				);
 				cam.set_control(id, newval).expect(&reason);
 			}
 		}

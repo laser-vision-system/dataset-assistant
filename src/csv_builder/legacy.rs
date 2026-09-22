@@ -4,9 +4,12 @@ use std::{
 	path::{Path, PathBuf},
 	thread,
 };
+
 use walkdir::{DirEntry, WalkDir};
 
-use super::{_FileWriter, _JoinHandle, CSVBuilderError, CSVBuilderHandle, Result, common};
+use super::{
+	_FileWriter, _JoinHandle, CSVBuilderError, CSVBuilderHandle, Result, common,
+};
 
 const OUTPUT_NAME: &str = "index.csv";
 
@@ -58,17 +61,19 @@ fn run(root_path: PathBuf) -> Result<()> {
 		.filter(common::is_image_file);
 
 	let csv_path = root_path.join(OUTPUT_NAME);
-	let mut writer = csv::Writer::from_path(csv_path)
-		.map_err(|why| CSVBuilderError::new(format!("failed to create csv writer: {why}")))?;
+	let mut writer = csv::Writer::from_path(csv_path).map_err(|why| {
+		CSVBuilderError::new(format!("failed to create csv writer: {why}"))
+	})?;
 
 	write_stream(&root_path, &mut writer, &mut entry_stream)?;
 
-	writer
-		.flush()
-		.map_err(|why| CSVBuilderError::new(format!("failed to flush csv: {why}")))
+	writer.flush().map_err(|why| {
+		CSVBuilderError::new(format!("failed to flush csv: {why}"))
+	})
 }
 
-/// Processes the iterator stream, detects the format, then writes headers and all subsequent records.
+/// Processes the iterator stream, detects the format, then writes headers and
+/// all subsequent records.
 fn write_stream(
 	root: &Path,
 	writer: &mut _FileWriter,
@@ -113,15 +118,20 @@ fn get_segments(entry: &DirEntry) -> Result<Vec<String>> {
 }
 
 /// Writes the header row based on the detected format.
-fn write_headers(writer: &mut _FileWriter, format: &LegacyFormat) -> Result<()> {
+fn write_headers(
+	writer: &mut _FileWriter,
+	format: &LegacyFormat,
+) -> Result<()> {
 	let headers = match format {
 		LegacyFormat::Single => vec!["relative_path", "intensity"],
-		LegacyFormat::Double => vec!["relative_path", "intensity", "external_intensity"],
+		LegacyFormat::Double => {
+			vec!["relative_path", "intensity", "external_intensity"]
+		},
 	};
 
-	writer
-		.write_record(&headers)
-		.map_err(|why| CSVBuilderError::new(format!("failed to write csv headers: {why}")))
+	writer.write_record(&headers).map_err(|why| {
+		CSVBuilderError::new(format!("failed to write csv headers: {why}"))
+	})
 }
 
 /// Writes a single dataset entry as a row in the CSV file.
@@ -134,12 +144,13 @@ fn write_record(writer: &mut _FileWriter, entry: &LegacyEntry) -> Result<()> {
 		record.push(ext_intensity.clone());
 	}
 
-	writer
-		.write_record(&record)
-		.map_err(|why| CSVBuilderError::new(format!("failed to write csv record: {why}")))
+	writer.write_record(&record).map_err(|why| {
+		CSVBuilderError::new(format!("failed to write csv record: {why}"))
+	})
 }
 
-/// Constructs a legacy entry by parsing the filename according to the detected format.
+/// Constructs a legacy entry by parsing the filename according to the detected
+/// format.
 fn create_legacy_entry(
 	root: &Path,
 	entry: &DirEntry,

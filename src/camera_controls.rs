@@ -3,13 +3,12 @@ use edge::tcam_interface::{
 	controls::{
 		descriptions::{CamControl, IntegerRangeControl},
 		traits::{
-			ControlDefault, ControlDescription, ControlItems, ControlMax, ControlMin, ControlStep,
-			ControlValue,
+			ControlDefault, ControlDescription, ControlItems, ControlMax,
+			ControlMin, ControlStep, ControlValue,
 		},
 		values::ConValueIntegerType,
 	},
 };
-
 use nokhwa::utils::{KnownCameraControl, MenuItem};
 
 use crate::sweep::ControlSweep;
@@ -54,7 +53,10 @@ impl ControlManager {
 		}
 	}
 
-	fn abs_deviation_from_default(&self, x: ConValueIntegerType) -> ConValueIntegerType {
+	fn abs_deviation_from_default(
+		&self,
+		x: ConValueIntegerType,
+	) -> ConValueIntegerType {
 		(x - self.get_default()).abs()
 	}
 
@@ -78,8 +80,8 @@ impl ControlManager {
 }
 
 impl ControlDescription for ControlManager {
-	type ValueType = ConValueIntegerType;
 	type ConType = ConValueIntegerType;
+	type ValueType = ConValueIntegerType;
 
 	fn get_id(&self) -> KnownCameraControl {
 		self.base.get_id()
@@ -185,7 +187,10 @@ pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<(), ()> {
 	Ok(())
 }
 
-pub fn extract_controls(camera: &mut CameraDevice, skip_exposure: bool) -> Vec<ControlManager> {
+pub fn extract_controls(
+	camera: &mut CameraDevice,
+	skip_exposure: bool,
+) -> Vec<ControlManager> {
 	let available_controls = camera.get_controls();
 	let mut variants = Vec::with_capacity(available_controls.len());
 
@@ -203,7 +208,9 @@ pub fn extract_controls(camera: &mut CameraDevice, skip_exposure: bool) -> Vec<C
 	variants
 }
 
-pub fn build_control_sweeps(controls: &Vec<ControlManager>) -> Vec<ControlSweep> {
+pub fn build_control_sweeps(
+	controls: &Vec<ControlManager>,
+) -> Vec<ControlSweep> {
 	controls
 		.iter()
 		.filter_map(|control| {

@@ -8,7 +8,9 @@ use std::{
 
 use walkdir::{DirEntry, WalkDir};
 
-use super::{_FileWriter, _JoinHandle, CSVBuilderError, CSVBuilderHandle, Result, common};
+use super::{
+	_FileWriter, _JoinHandle, CSVBuilderError, CSVBuilderHandle, Result, common,
+};
 
 const OUTPUT_NAME: &str = "index.csv";
 
@@ -64,18 +66,22 @@ fn run(root_path: PathBuf) -> Result<()> {
 		.map(|entry| create_dataset_entry(&root_path, &entry));
 
 	let csv_path = root_path.join(OUTPUT_NAME);
-	let mut writer = csv::Writer::from_path(csv_path)
-		.map_err(|why| CSVBuilderError::new(format!("failed to create csv writer: {why}")))?;
+	let mut writer = csv::Writer::from_path(csv_path).map_err(|why| {
+		CSVBuilderError::new(format!("failed to create csv writer: {why}"))
+	})?;
 
 	write_stream(&mut writer, &mut entry_stream)?;
 
-	writer
-		.flush()
-		.map_err(|why| CSVBuilderError::new(format!("failed to flush csv: {why}")))
+	writer.flush().map_err(|why| {
+		CSVBuilderError::new(format!("failed to flush csv: {why}"))
+	})
 }
 
 /// Constructs a single dataset entry by parsing the path and reading metadata.
-fn create_dataset_entry(root: &Path, image_entry: &DirEntry) -> Result<DatasetEntry> {
+fn create_dataset_entry(
+	root: &Path,
+	image_entry: &DirEntry,
+) -> Result<DatasetEntry> {
 	let image_path = image_entry.path();
 	let relative_path = common::get_relative_path(root, image_path)?;
 
@@ -105,14 +111,16 @@ fn get_parent_directory(path: &Path) -> Result<&Path> {
 
 /// Parses a directory name into an f32 intensity value.
 fn parse_intensity(name: &str) -> Result<f32> {
-	name.parse::<f32>()
-		.map_err(|why| CSVBuilderError::new(format!("failed to parse intensity: {why}")))
+	name.parse::<f32>().map_err(|why| {
+		CSVBuilderError::new(format!("failed to parse intensity: {why}"))
+	})
 }
 
 /// Reads and parses a metadata file into a list of fields.
 fn read_metadata(path: &Path) -> Result<_MetadataList> {
-	let content = fs::read_to_string(path)
-		.map_err(|why| CSVBuilderError::new(format!("failed to read metadata file: {why}")))?;
+	let content = fs::read_to_string(path).map_err(|why| {
+		CSVBuilderError::new(format!("failed to read metadata file: {why}"))
+	})?;
 
 	content
 		.lines()
@@ -127,10 +135,9 @@ fn parse_metadata_line(line: &str) -> Result<MetadataField> {
 		.split_once(':')
 		.ok_or_else(|| CSVBuilderError::new("invalid metadata line format"))?;
 
-	let parsed_value = value
-		.trim()
-		.parse::<u16>()
-		.map_err(|why| CSVBuilderError::new(format!("failed to parse metadata value: {why}")))?;
+	let parsed_value = value.trim().parse::<u16>().map_err(|why| {
+		CSVBuilderError::new(format!("failed to parse metadata value: {why}"))
+	})?;
 
 	Ok(MetadataField {
 		key: key.trim().to_string(),
@@ -159,7 +166,10 @@ fn write_stream(
 }
 
 /// Writes the header row to the CSV file based on the first entry's metadata.
-fn write_headers(writer: &mut _FileWriter, first_entry: &DatasetEntry) -> Result<()> {
+fn write_headers(
+	writer: &mut _FileWriter,
+	first_entry: &DatasetEntry,
+) -> Result<()> {
 	let mut headers = vec![
 		"relative_path".to_string(),
 		"position".to_string(),
@@ -170,9 +180,9 @@ fn write_headers(writer: &mut _FileWriter, first_entry: &DatasetEntry) -> Result
 		headers.push(field.key.clone());
 	}
 
-	writer
-		.write_record(&headers)
-		.map_err(|why| CSVBuilderError::new(format!("failed to write csv headers: {why}")))
+	writer.write_record(&headers).map_err(|why| {
+		CSVBuilderError::new(format!("failed to write csv headers: {why}"))
+	})
 }
 
 /// Writes a single dataset entry as a row in the CSV file.
@@ -187,7 +197,7 @@ fn write_record(writer: &mut _FileWriter, entry: &DatasetEntry) -> Result<()> {
 		record.push(field.value.to_string());
 	}
 
-	writer
-		.write_record(&record)
-		.map_err(|why| CSVBuilderError::new(format!("failed to write csv record: {why}")))
+	writer.write_record(&record).map_err(|why| {
+		CSVBuilderError::new(format!("failed to write csv record: {why}"))
+	})
 }

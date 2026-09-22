@@ -32,74 +32,107 @@ impl eframe::App for DatasetAssistantApp {
 				UserInterface::add_heading(ui);
 				UserInterface::add_subheading(ui, "Directory");
 
-				ui.add_enabled_ui(self.state.current_state_is_preparation(), |ui| {
-					ui.indent("directory", |ui| {
-						ui.add_enabled_ui(!self.state.live_feed, |ui| {
-							ui.label(&self.state.dataset_path_label);
-							self.state.chose_folder = UserInterface::choose_folder(ui);
+				ui.add_enabled_ui(
+					self.state.current_state_is_preparation(),
+					|ui| {
+						ui.indent("directory", |ui| {
+							ui.add_enabled_ui(!self.state.live_feed, |ui| {
+								ui.label(&self.state.dataset_path_label);
+								self.state.chose_folder =
+									UserInterface::choose_folder(ui);
 
-							ui.separator();
+								ui.separator();
 
-							ui.label(&self.state.subset_path_label);
-							ui.add_enabled_ui(self.state.is_dataset(), |ui| {
-								if let Some(selection) = UserInterface::build_csv_selection(ui) {
-									self.state.should_build_csv = selection;
-								}
+								ui.label(&self.state.subset_path_label);
+								ui.add_enabled_ui(
+									self.state.is_dataset(),
+									|ui| {
+										if let Some(selection) =
+											UserInterface::build_csv_selection(
+												ui,
+											) {
+											self.state.should_build_csv =
+												selection;
+										}
 
-								if let Some(subset) = UserInterface::display_subset_entry_grid(
+										if let Some(subset) = UserInterface::display_subset_entry_grid(
 									ui,
 									&mut self.state.camera_position_input,
 									&mut self.state.laser_intensity_input,
 								) {
 									self.state.try_add_subset(subset);
 								}
+									},
+								);
 							});
-						});
-					});
-
-					ui.separator();
-
-					UserInterface::add_subheading(ui, "Camera");
-
-					ui.indent("camera", |ui| {
-						ui.add_enabled_ui(!self.state.live_feed, |ui| {
-							if let Some(selection) =
-								UserInterface::camera_selection(ui, &self.state.camera_id_label)
-							{
-								self.state.requested_cam_index = selection;
-							}
 						});
 
 						ui.separator();
 
-						ui.add_enabled_ui(self.state.is_camera(), |ui| {
-							request_capture =
-								UserInterface::capture_controls(ui, &mut self.state.live_feed);
+						UserInterface::add_subheading(ui, "Camera");
+
+						ui.indent("camera", |ui| {
+							ui.add_enabled_ui(!self.state.live_feed, |ui| {
+								if let Some(selection) =
+									UserInterface::camera_selection(
+										ui,
+										&self.state.camera_id_label,
+									) {
+									self.state.requested_cam_index = selection;
+								}
+							});
+
+							ui.separator();
+
+							ui.add_enabled_ui(self.state.is_camera(), |ui| {
+								request_capture =
+									UserInterface::capture_controls(
+										ui,
+										&mut self.state.live_feed,
+									);
+							});
+
+							if self.state.is_camera() {
+								ui.collapsing("Controls:", |ui| {
+									self.state.requested_controls =
+										UserInterface::draw_controls(
+											ui,
+											&mut self
+												.state
+												.controls
+												.iter_mut()
+												.collect(),
+										);
+								});
+							}
 						});
 
-						if self.state.is_camera() {
-							ui.collapsing("Controls:", |ui| {
-								self.state.requested_controls = UserInterface::draw_controls(
-									ui,
-									&mut self.state.controls.iter_mut().collect(),
-								);
-							});
+						ui.add_space(5.0);
+
+						if UserInterface::save_button(
+							ui,
+							self.state.is_complete(),
+						) {
+							self.state.try_to_collecting();
 						}
-					});
+					},
+				);
 
-					ui.add_space(5.0);
+				ui.add_enabled_ui(
+					self.state.current_state_is_collecting(),
+					|ui| {
+						UserInterface::draw_collecting(
+							ui,
+							&self.state.saving_progress,
+						);
+					},
+				);
 
-					if UserInterface::save_button(ui, self.state.is_complete()) {
-						self.state.try_to_collecting();
-					}
-				});
-
-				ui.add_enabled_ui(self.state.current_state_is_collecting(), |ui| {
-					UserInterface::draw_collecting(ui, &self.state.saving_progress);
-				});
-
-				self.state
-					.execute_for_preparation(&mut self.capture, ui, request_capture);
+				self.state.execute_for_preparation(
+					&mut self.capture,
+					ui,
+					request_capture,
+				);
 
 				self.state.execute_for_collecting(&mut self.capture);
 

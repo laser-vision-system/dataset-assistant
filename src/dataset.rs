@@ -6,11 +6,11 @@ use std::{
 
 use eframe::egui::TextBuffer;
 
-use crate::settings::{
-	DIRECTORY_SELECTED_LABEL, FAILED_DIRECTORY_LABEL, NON_EMPTY_DIRECTORY_SELECTED_LABEL,
-};
-
 use super::subset::Subset;
+use crate::settings::{
+	DIRECTORY_SELECTED_LABEL, FAILED_DIRECTORY_LABEL,
+	NON_EMPTY_DIRECTORY_SELECTED_LABEL,
+};
 
 /// Query a path for availablility information.
 fn is_path_available(path: &Path) -> io::Result<()> {
@@ -28,9 +28,11 @@ fn is_path_available(path: &Path) -> io::Result<()> {
 	Ok(())
 }
 
-/// A dataset is a large collection of images that will be used for training a machine learning model.
+/// A dataset is a large collection of images that will be used for training a
+/// machine learning model.
 ///
-/// Does not support any kind of dynamic adjustment; assumes that the path it holds will not be changed unexpectedly by an external source.
+/// Does not support any kind of dynamic adjustment; assumes that the path it
+/// holds will not be changed unexpectedly by an external source.
 #[derive(Clone, Debug, Default)]
 pub struct Dataset {
 	root: PathBuf,
@@ -49,7 +51,8 @@ impl Dataset {
 	///
 	/// The path must be a directory.
 	///
-	/// Details about the selected directory will be placed into the `label` parameter.
+	/// Details about the selected directory will be placed into the `label`
+	/// parameter.
 	pub fn try_new(path: PathBuf, label: &mut String) -> Option<Self> {
 		match is_path_available(&path) {
 			Ok(()) => {
@@ -125,7 +128,9 @@ mod tests {
 
 	#[test]
 	fn available_path() {
-		let path = Path::new("./long/path/guaranteed/to/be/available/a/a/a/a/a/a/a/a/a/a/a/a/");
+		let path = Path::new(
+			"./long/path/guaranteed/to/be/available/a/a/a/a/a/a/a/a/a/a/a/a/",
+		);
 		assert_matches!(is_path_available(path), Ok(()))
 	}
 
@@ -149,5 +154,6 @@ mod tests {
 		assert_eq!(ds.unwrap().root, path.to_path_buf());
 	}
 
-	// Other method testing would be better suited for integration tests, which I'm not bothering with for this.
+	// Other method testing would be better suited for integration tests, which
+	// I'm not bothering with for this.
 }

@@ -18,7 +18,10 @@ impl Capture {
 			"capture",
 			egui::ImageData::Color(Arc::new(egui::ColorImage::new(
 				[TEXTURE_WIDTH, TEXTURE_HEIGHT],
-				vec![egui::Color32::TRANSPARENT; TEXTURE_WIDTH * TEXTURE_HEIGHT],
+				vec![
+					egui::Color32::TRANSPARENT;
+					TEXTURE_WIDTH * TEXTURE_HEIGHT
+				],
 			))),
 			egui::TextureOptions::default(),
 		);

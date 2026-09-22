@@ -113,7 +113,8 @@ pub(super) mod common {
 	/// Checks if a given file entry is a PNG image.
 	pub(super) fn is_image_file(entry: &DirEntry) -> bool {
 		entry.file_type().is_file()
-			&& entry.path().extension().and_then(|ext| ext.to_str()) == Some("png")
+			&& entry.path().extension().and_then(|ext| ext.to_str())
+				== Some("png")
 	}
 
 	/// Extracts the file or directory name as a valid [`String`].
@@ -125,11 +126,18 @@ pub(super) mod common {
 	}
 
 	/// Calculates the relative path from the root directory to a given file.
-	pub(super) fn get_relative_path(root: &Path, file: &Path) -> Result<String> {
+	pub(super) fn get_relative_path(
+		root: &Path,
+		file: &Path,
+	) -> Result<String> {
 		file.strip_prefix(root)
-			.map_err(|why| CSVBuilderError::new(format!("failed to strip prefix: {why}")))?
+			.map_err(|why| {
+				CSVBuilderError::new(format!("failed to strip prefix: {why}"))
+			})?
 			.to_str()
-			.ok_or_else(|| CSVBuilderError::new("invalid unicode in relative path"))
+			.ok_or_else(|| {
+				CSVBuilderError::new("invalid unicode in relative path")
+			})
 			.map(String::from)
 	}
 }
