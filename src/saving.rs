@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
-use edge::tcam_interface::{Camera, controls::traits::ControlValue};
+use edge::tcam_interface::{CameraDevice, controls::traits::ControlValue};
 use eframe::egui::TextBuffer;
 
 use crate::{
@@ -45,7 +45,7 @@ impl Saving {
 	/// Save one image, incrementing controls as needed.
 	pub fn pulse(
 		&mut self,
-		camera: &mut Camera,
+		camera: &mut CameraDevice,
 		capture: &mut Capture,
 		progress: &mut String,
 	) -> Finished {
@@ -71,7 +71,7 @@ impl Saving {
 	}
 
 	/// Set all camera controls to their defaults.
-	fn set_to_defaults(&mut self, camera: &mut Camera) {
+	fn set_to_defaults(&mut self, camera: &mut CameraDevice) {
 		for sweep_types in &mut self.control_sweeps {
 			sweep_types.apply_default(camera)
 		}
@@ -85,16 +85,17 @@ impl Saving {
 
 	fn save_once(
 		&mut self,
-		camera: &mut Camera,
+		camera: &mut CameraDevice,
 		capture: &mut Capture,
 		value_strings: ValueStrings,
 	) {
 		// To address latency, skip 4 frames.
-		camera.get_image_shrink().unwrap();
-		camera.get_image_shrink().unwrap();
-		camera.get_image_shrink().unwrap();
-		camera.get_image_shrink().unwrap();
-		let image = camera.get_image_shrink().unwrap();
+		camera.get_frame().unwrap();
+		camera.get_frame().unwrap();
+		camera.get_frame().unwrap();
+		camera.get_frame().unwrap();
+		let frame = camera.get_frame().unwrap();
+		let image = camera.decode_image(frame).unwrap();
 		capture.store_image(image);
 		let mut img_filepath = self.path.clone();
 		img_filepath.push(format!(

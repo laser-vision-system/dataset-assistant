@@ -1,7 +1,7 @@
 use std::{fmt, iter::StepBy, ops::RangeInclusive};
 
 use edge::tcam_interface::{
-	Camera,
+	CameraDevice,
 	controls::{
 		traits::{ControlDefault, ControlDescription},
 		values::{ConValueInteger, ConValueIntegerType},
@@ -47,7 +47,7 @@ impl ControlSweep {
 		(manager.min..=manager.max).step_by(manager.step as usize)
 	}
 
-	pub fn apply_default(&mut self, camera: &mut Camera) {
+	pub fn apply_default(&mut self, camera: &mut CameraDevice) {
 		self.control.reset_to_default();
 		let id = self.control.get_id();
 		let value = self.control.base.get_value();
@@ -56,7 +56,7 @@ impl ControlSweep {
 			.expect("control should always be set to a valid value");
 	}
 
-	pub fn apply_current(&mut self, camera: &mut Camera) {
+	pub fn apply_current(&mut self, camera: &mut CameraDevice) {
 		let id = self.control.get_id();
 		let value = self.control.base.get_value();
 		camera

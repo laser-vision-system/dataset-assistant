@@ -1,5 +1,5 @@
 use edge::tcam_interface::{
-	Camera,
+	CameraDevice,
 	controls::{
 		traits::{ControlDefault, ControlDescription, ControlMax, ControlMin, ControlStep},
 		values::ConValueIntegerType,
@@ -57,7 +57,7 @@ impl UserInterface {
 				}
 
 				// Cannot be cached because state might change.
-				for info in Camera::query_for_available_cameras() {
+				for info in CameraDevice::query_for_available_cameras() {
 					let index = info.index().as_index().unwrap();
 					let btn_lbl = format!("{}: {}", index, info.human_name());
 					if ui.button(btn_lbl).clicked() {

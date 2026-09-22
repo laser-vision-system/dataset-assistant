@@ -1,5 +1,5 @@
 use edge::tcam_interface::{
-	Camera,
+	CameraDevice,
 	controls::{
 		descriptions::{CamControl, IntegerRangeControl},
 		traits::{
@@ -160,7 +160,7 @@ impl TryFrom<CamControl> for ControlManager {
 	}
 }
 
-pub fn try_disable_auto_exposure(camera: &mut Camera) -> Result<(), ()> {
+pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<(), ()> {
 	let id = KnownCameraControl::AutoExposure;
 	let CamControl::Menu(control) = camera.get_control(id) else {
 		return Err(());
@@ -185,11 +185,11 @@ pub fn try_disable_auto_exposure(camera: &mut Camera) -> Result<(), ()> {
 	Ok(())
 }
 
-pub fn extract_controls(camera: &mut Camera, skip_exposure: bool) -> Vec<ControlManager> {
+pub fn extract_controls(camera: &mut CameraDevice, skip_exposure: bool) -> Vec<ControlManager> {
 	let available_controls = camera.get_controls();
 	let mut variants = Vec::with_capacity(available_controls.len());
 
-	for (id, cam_control) in available_controls {
+	for (id, cam_control) in available_controls.into_inner() {
 		if !CONTROLS_OF_INTEREST.contains(&id)
 			|| (id == KnownCameraControl::ExposureAbsolute && skip_exposure)
 		{

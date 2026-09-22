@@ -1,5 +1,5 @@
 use edge::tcam_interface::{
-	Camera,
+	CameraDevice,
 	controls::{traits::ControlDescription, values::ConValueIntegerType},
 };
 use eframe::egui::{self, TextBuffer};
@@ -31,7 +31,7 @@ enum Stage {
 pub struct State {
 	stage: Stage,
 	file_dialog: FileDialog,
-	camera: Option<Camera>,
+	camera: Option<CameraDevice>,
 	dataset: Option<Dataset>,
 	pub camera_id_label: String,
 	pub dataset_path_label: String,
@@ -70,7 +70,8 @@ impl State {
 	}
 
 	fn add_camera(&mut self, index: u32) {
-		self.camera = match Camera::new(index) {
+		let index = nokhwa::utils::CameraIndex::Index(index);
+		self.camera = match CameraDevice::new(index) {
 			Ok(mut camera) => {
 				camera.reset_controls_to_default();
 				let skip_exposure = try_disable_auto_exposure(&mut camera).is_err();
@@ -101,7 +102,7 @@ impl State {
 			return;
 		}
 
-		// Camera
+		// CameraDevice
 
 		if let Some(should) = self.requested_cam_index.take() {
 			match should {
@@ -142,10 +143,21 @@ impl State {
 
 		if request_capture || self.live_feed {
 			let cam = self.camera.as_mut().unwrap();
-			match cam.get_image_shrink() {
-				Ok(image) => capture.store_image(image),
-				Err(e) => eprintln!("Failed to get image: {e}"),
-			}
+			let frame = match cam.get_frame() {
+				Ok(frame) => frame,
+				Err(e) => {
+					eprintln!("Failed to get frame: {e}");
+					return;
+				},
+			};
+			let image = match cam.decode_image(frame) {
+				Ok(image) => image,
+				Err(e) => {
+					eprintln!("Failed to decode to image: {e}");
+					return;
+				},
+			};
+			capture.store_image(image);
 		}
 
 		// File dialog
