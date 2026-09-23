@@ -2,13 +2,13 @@ use edge::tcam_interface::{
 	CameraDevice,
 	controls::{
 		traits::{
-			ControlDefault, ControlDescription, ControlMax, ControlMin,
-			ControlStep,
+			ControlDefault as _, ControlDescription as _, ControlMax as _,
+			ControlMin as _, ControlStep as _,
 		},
 		values::ConValueIntegerType,
 	},
 };
-use eframe::egui::{self, TextBuffer};
+use eframe::egui::{self, TextBuffer as _};
 
 use crate::{
 	camera_controls::ControlManager,
@@ -50,6 +50,7 @@ impl UserInterface {
 	/// First option is whether the menu is open.
 	/// Second option is whether a button was clicked.
 	/// Third option is the index.
+	#[expect(clippy::option_option, reason = "It works okay")]
 	pub fn camera_selection(
 		ui: &mut egui::Ui,
 		state: &str,
@@ -65,7 +66,9 @@ impl UserInterface {
 
 				// Cannot be cached because state might change.
 				for info in CameraDevice::query_for_available_cameras() {
-					let index = info.index().as_index().unwrap();
+					let Ok(index) = info.index().as_index() else {
+						continue;
+					};
 					let btn_lbl = format!("{}: {}", index, info.human_name());
 					if ui.button(btn_lbl).clicked() {
 						ui.close();
@@ -83,6 +86,7 @@ impl UserInterface {
 		ui.button("Choose folder").clicked()
 	}
 
+	#[expect(clippy::option_option, reason = "It works okay")]
 	pub fn build_csv_selection(ui: &mut egui::Ui) -> Option<Option<u8>> {
 		ui.horizontal(|ui| {
 			ui.menu_button("Build CSV", |ui| {
@@ -132,20 +136,18 @@ impl UserInterface {
 			),
 		];
 		let res = input_grid_const("subset", entries, ui);
-		let trigger = res.iter().any(|r| r.lost_focus());
+		let trigger = res.iter().any(eframe::egui::Response::lost_focus);
 		let none_empty = !camera_position_input.is_empty()
 			&& !laser_intensity_input.is_empty();
-		if trigger && none_empty {
+		(trigger && none_empty).then(|| {
 			let subset = Subset::new(
-				camera_position_input.to_string(),
-				laser_intensity_input.to_string(),
+				camera_position_input.clone(),
+				laser_intensity_input.clone(),
 			);
 			camera_position_input.replace_with("");
 			laser_intensity_input.replace_with("");
-			Some(subset)
-		} else {
-			None
-		}
+			subset
+		})
 	}
 
 	/// Draw a section for a single control.
@@ -156,8 +158,8 @@ impl UserInterface {
 		ui: &mut egui::Ui,
 		manager: &mut ControlManager,
 	) -> Option<ConValueIntegerType> {
-		let default_label = "def:".to_string();
-		let current_label = "cur:".to_string();
+		let default_label = "def:".to_owned();
+		let current_label = "cur:".to_owned();
 		let valstrs = [
 			default_label.clone(),
 			manager.get_default().to_string(),
@@ -228,7 +230,7 @@ impl UserInterface {
 
 		match res[0] {
 			Some(new_val) => {
-				let _ = manager.set_value(new_val);
+				_ = manager.set_value(new_val);
 				Some(new_val)
 			},
 			None => None,
@@ -240,7 +242,7 @@ impl UserInterface {
 		controls: &mut Vec<&mut ControlManager>,
 	) -> Option<Vec<Option<ConValueIntegerType>>> {
 		let res: Vec<_> = controls
-			.into_iter()
+			.iter_mut()
 			.map(|control_ref| {
 				let name = control_ref.base.get_id().to_string();
 				ui.collapsing(name, |ui| {
@@ -251,11 +253,7 @@ impl UserInterface {
 			})
 			.collect();
 
-		if res.iter().any(|val| val.is_some()) {
-			Some(res)
-		} else {
-			None
-		}
+		res.iter().any(std::option::Option::is_some).then_some(res)
 	}
 
 	pub fn save_button(ui: &mut egui::Ui, enabled: bool) -> bool {

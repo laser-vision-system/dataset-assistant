@@ -1,7 +1,7 @@
-use std::{fs::File, io::Write, path::PathBuf};
+use std::{fmt::Write as _, fs::File, io::Write as _, path::PathBuf};
 
-use edge::tcam_interface::{CameraDevice, controls::traits::ControlValue};
-use eframe::egui::TextBuffer;
+use edge::tcam_interface::{CameraDevice, controls::traits::ControlValue as _};
+use eframe::egui::TextBuffer as _;
 
 use crate::{
 	capture::Capture,
@@ -53,11 +53,9 @@ impl Saving {
 			ValueStrings::with_capacity(self.control_sweeps.len());
 		for sweep in &mut self.control_sweeps {
 			sweep.apply_current(camera);
-			val_strs
-				.details
-				.push_str(&format!("{}\n", sweep.to_string()));
+			_ = writeln!(val_strs.details, "{sweep}");
 			let value = sweep.to_control_type_value().get_value().to_string();
-			val_strs.short.push_str(&format!("_{}", value));
+			_ = write!(val_strs.short, "_{value}");
 		}
 
 		progress.replace_with(&val_strs.details);
@@ -74,7 +72,7 @@ impl Saving {
 	/// Set all camera controls to their defaults.
 	fn set_to_defaults(&mut self, camera: &mut CameraDevice) {
 		for sweep_types in &mut self.control_sweeps {
-			sweep_types.apply_default(camera)
+			sweep_types.apply_default(camera);
 		}
 	}
 
@@ -82,31 +80,34 @@ impl Saving {
 	/// step reports that the sweep has not completed. When all steps report
 	/// that they have finished, then so too does this method.
 	fn increment_controls(&mut self) -> Finished {
-		self.control_sweeps.iter_mut().rev().all(|c| c.step())
+		self.control_sweeps
+			.iter_mut()
+			.rev()
+			.all(super::sweep::ControlSweep::step)
 	}
 
+	#[expect(clippy::unwrap_used, reason = "Lazy developer")]
+	#[expect(
+		clippy::needless_pass_by_value,
+		reason = "These should be consumed"
+	)]
 	fn save_once(
 		&mut self,
 		camera: &mut CameraDevice,
 		capture: &mut Capture,
 		value_strings: ValueStrings,
 	) {
-		// To address latency, skip 4 frames.
-		camera.get_frame().unwrap();
-		camera.get_frame().unwrap();
-		camera.get_frame().unwrap();
+		// To address latency, skip 1 frame.
 		camera.get_frame().unwrap();
 		let frame = camera.get_frame().unwrap();
 		let image = camera.decode_image(frame).unwrap();
-		capture.store_image(image);
-		let mut img_filepath = self.path.clone();
-		img_filepath.push(format!(
+		capture.store_image(&image);
+		let img_filepath = self.path.join(format!(
 			"{}{}.{}",
 			FILE_NAME_BASE, value_strings.short, IMAGE_EXTENSION
 		));
 		capture.save_to_file(&img_filepath);
-		let mut meta_filepath = self.path.clone();
-		meta_filepath.push(format!(
+		let meta_filepath = self.path.join(format!(
 			"{}{}.{}",
 			FILE_NAME_BASE, value_strings.short, META_EXTENSION
 		));

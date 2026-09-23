@@ -19,6 +19,10 @@ pub struct Builder {
 }
 
 impl Builder {
+	#[expect(
+		clippy::unwrap_used,
+		reason = "Unlikely to happen, and panic is desired"
+	)]
 	pub fn new(path: PathBuf) -> Self {
 		let handle = thread::Builder::new()
 			.name("legacy_csv_builder".into())
@@ -52,12 +56,13 @@ struct LegacyEntry {
 }
 
 /// Main execution pipeline for the legacy CSV builder thread.
+#[expect(clippy::needless_pass_by_value, reason = "This should be consuming")]
 fn run(root_path: PathBuf) -> Result<()> {
 	let mut entry_stream = WalkDir::new(&root_path)
 		.min_depth(1)
 		.into_iter()
 		.filter_entry(common::is_not_git_dir)
-		.filter_map(|e| e.ok())
+		.filter_map(std::result::Result::ok)
 		.filter(common::is_image_file);
 
 	let csv_path = root_path.join(OUTPUT_NAME);
@@ -84,13 +89,13 @@ fn write_stream(
 	};
 
 	let format = detect_format(&first_entry)?;
-	write_headers(writer, &format)?;
+	write_headers(writer, format)?;
 
-	let first_record = create_legacy_entry(root, &first_entry, &format)?;
+	let first_record = create_legacy_entry(root, &first_entry, format)?;
 	write_record(writer, &first_record)?;
 
 	for entry in stream {
-		let record = create_legacy_entry(root, &entry, &format)?;
+		let record = create_legacy_entry(root, &entry, format)?;
 		write_record(writer, &record)?;
 	}
 
@@ -110,18 +115,13 @@ fn detect_format(entry: &DirEntry) -> Result<LegacyFormat> {
 fn get_segments(entry: &DirEntry) -> Result<Vec<String>> {
 	let name = common::get_file_name(entry.path())?;
 	let name_without_ext = name.strip_suffix(".png").unwrap_or(&name);
-	let segments: Vec<String> = name_without_ext
-		.split('_')
-		.map(ToString::to_string)
-		.collect();
+	let segments: Vec<String> =
+		name_without_ext.split('_').map(str::to_owned).collect();
 	Ok(segments)
 }
 
 /// Writes the header row based on the detected format.
-fn write_headers(
-	writer: &mut _FileWriter,
-	format: &LegacyFormat,
-) -> Result<()> {
+fn write_headers(writer: &mut _FileWriter, format: LegacyFormat) -> Result<()> {
 	let headers = match format {
 		LegacyFormat::Single => vec!["relative_path", "intensity"],
 		LegacyFormat::Double => {
@@ -151,13 +151,17 @@ fn write_record(writer: &mut _FileWriter, entry: &LegacyEntry) -> Result<()> {
 
 /// Constructs a legacy entry by parsing the filename according to the detected
 /// format.
+#[expect(clippy::indexing_slicing, reason = "Length validated prior")]
 fn create_legacy_entry(
 	root: &Path,
 	entry: &DirEntry,
-	format: &LegacyFormat,
+	format: LegacyFormat,
 ) -> Result<LegacyEntry> {
 	let relative_path = common::get_relative_path(root, entry.path())?;
 	let segments = get_segments(entry)?;
+	if segments.len() <= 1 {
+		return Err(CSVBuilderError::new("not enough segments in filename"));
+	}
 
 	match format {
 		LegacyFormat::Single => {
@@ -169,7 +173,7 @@ fn create_legacy_entry(
 			Ok(LegacyEntry {
 				relative_path,
 				external_intensity: None,
-				intensity: segments[1].to_string(),
+				intensity: segments[1].clone(),
 			})
 		},
 		LegacyFormat::Double => {
@@ -180,8 +184,8 @@ fn create_legacy_entry(
 			}
 			Ok(LegacyEntry {
 				relative_path,
-				external_intensity: Some(segments[1].to_string()),
-				intensity: segments[2].to_string(),
+				external_intensity: Some(segments[1].clone()),
+				intensity: segments[2].clone(),
 			})
 		},
 	}

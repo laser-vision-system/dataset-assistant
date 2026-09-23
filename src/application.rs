@@ -23,6 +23,10 @@ impl DatasetAssistantApp {
 }
 
 impl eframe::App for DatasetAssistantApp {
+	#[expect(
+		clippy::too_many_lines,
+		reason = "I am aware, and I keep trying to reduce it"
+	)]
 	fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
 		egui::Panel::left("controls").show(ui, |ui| {
 			ui.style_mut().spacing.scroll = egui::style::ScrollStyle::solid();

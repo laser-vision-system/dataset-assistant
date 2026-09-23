@@ -1,12 +1,15 @@
-use edge::tcam_interface::{
-	CameraDevice,
-	controls::{
-		descriptions::{CamControl, IntegerRangeControl},
-		traits::{
-			ControlDefault, ControlDescription, ControlItems, ControlMax,
-			ControlMin, ControlStep, ControlValue,
+use edge::{
+	error::{EdgeError, Result},
+	tcam_interface::{
+		CameraDevice,
+		controls::{
+			descriptions::{CamControl, IntegerRangeControl},
+			traits::{
+				ControlDefault, ControlDescription, ControlItems as _,
+				ControlMax, ControlMin, ControlStep, ControlValue as _,
+			},
+			values::ConValueIntegerType,
 		},
-		values::ConValueIntegerType,
 	},
 };
 use nokhwa::utils::{KnownCameraControl, MenuItem};
@@ -24,6 +27,8 @@ const CONTROLS_OF_INTEREST: [KnownCameraControl; 8] = [
 	KnownCameraControl::ExposureAbsolute,
 	// TODO: White balance.
 ];
+
+const PATTERNS: [&str; 2] = ["manual", "Manual"];
 
 #[derive(Clone, Debug)]
 pub struct ControlManager {
@@ -87,7 +92,7 @@ impl ControlDescription for ControlManager {
 		self.base.get_id()
 	}
 
-	fn set_value(&mut self, value: Self::ValueType) -> Result<(), ()> {
+	fn set_value(&mut self, value: Self::ValueType) -> Result<()> {
 		self.base.set_value(value.into())?;
 		self.value = value;
 		Ok(())
@@ -106,8 +111,8 @@ impl ControlDefault for ControlManager {
 	}
 
 	fn reset_to_default(&mut self) {
-		self.set_value(self.get_default().into())
-			.expect("default value should never be invalid")
+		self.set_value(self.get_default())
+			.expect("default value should never be invalid");
 	}
 }
 
@@ -141,11 +146,13 @@ impl ControlMax for ControlManager {
 }
 
 impl TryFrom<CamControl> for ControlManager {
-	type Error = ();
+	type Error = EdgeError;
 
-	fn try_from(value: CamControl) -> Result<Self, Self::Error> {
+	fn try_from(value: CamControl) -> Result<Self> {
 		let CamControl::IntegerRange(control) = value else {
-			return Err(());
+			return Err(EdgeError::General {
+				reason: "Wrong control type".into(),
+			});
 		};
 		Ok(Self {
 			base: control,
@@ -154,18 +161,20 @@ impl TryFrom<CamControl> for ControlManager {
 			min: control.get_min(),
 			max: control.get_max(),
 			enable: true,
-			value_input: Default::default(),
-			step_input: Default::default(),
-			min_input: Default::default(),
-			max_input: Default::default(),
+			value_input: String::default(),
+			step_input: String::default(),
+			min_input: String::default(),
+			max_input: String::default(),
 		})
 	}
 }
 
-pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<(), ()> {
+pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<()> {
 	let id = KnownCameraControl::AutoExposure;
 	let CamControl::Menu(control) = camera.get_control(id) else {
-		return Err(());
+		return Err(EdgeError::General {
+			reason: "Wrong control type".into(),
+		});
 	};
 	let items = control.get_items();
 	let valid_entires: Vec<_> = items
@@ -174,13 +183,18 @@ pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<(), ()> {
 			let MenuItem::Name(name) = entry.get_item() else {
 				return false;
 			};
-			const PATTERNS: [&str; 2] = ["manual", "Manual"];
 			PATTERNS.into_iter().any(|pattern| name.contains(pattern))
 		})
 		.collect();
-	let &first = valid_entires.first().ok_or(())?;
+	let &first = valid_entires.first().ok_or(EdgeError::General {
+		reason: "Wrong control type".into(),
+	})?;
 	let mut value = control.get_value();
 	value.set_value(first.get_id());
+	#[expect(
+		clippy::unwrap_in_result,
+		reason = "value should be validated by control description"
+	)]
 	camera
 		.set_control(id, value)
 		.expect("value should be validated by control description");
@@ -208,17 +222,10 @@ pub fn extract_controls(
 	variants
 }
 
-pub fn build_control_sweeps(
-	controls: &Vec<ControlManager>,
-) -> Vec<ControlSweep> {
+pub fn build_control_sweeps(controls: &[ControlManager]) -> Vec<ControlSweep> {
 	controls
 		.iter()
-		.filter_map(|control| {
-			if control.enable {
-				Some(control.clone().into())
-			} else {
-				None
-			}
-		})
+		.filter(|&control| control.enable)
+		.map(|control| control.clone().into())
 		.collect()
 }

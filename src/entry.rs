@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, reason = "May be needed in future")]
 
 use std::str::FromStr;
 
@@ -30,7 +30,7 @@ pub trait ParseAs: Entry {
 			input.clear();
 			return value;
 		}
-		return None;
+		None
 	}
 }
 
@@ -58,7 +58,7 @@ impl<'i, const N: usize> StaticLabelTextEntryBox<'i, N> {
 	}
 }
 
-impl<'i, const N: usize> Entry for StaticLabelTextEntryBox<'_, N> {
+impl<const N: usize> Entry for StaticLabelTextEntryBox<'_, N> {
 	const ELEMENTS: usize = 2 + N;
 
 	fn draw(&mut self, ui: &mut egui::Ui) -> egui::Response {
@@ -74,7 +74,7 @@ impl<'i, const N: usize> Entry for StaticLabelTextEntryBox<'_, N> {
 	}
 }
 
-impl<'i, const N: usize> ParseAs for StaticLabelTextEntryBox<'_, N> {
+impl<const N: usize> ParseAs for StaticLabelTextEntryBox<'_, N> {
 	fn input_mut(&mut self) -> &mut String {
 		self.input
 	}
@@ -104,7 +104,7 @@ impl<'i, const N: usize> OnDemandTextEntryBox<'i, N> {
 	}
 }
 
-impl<'i, const N: usize> Entry for OnDemandTextEntryBox<'_, N> {
+impl<const N: usize> Entry for OnDemandTextEntryBox<'_, N> {
 	const ELEMENTS: usize = 2 + N;
 
 	fn draw(&mut self, ui: &mut egui::Ui) -> egui::Response {
@@ -120,7 +120,7 @@ impl<'i, const N: usize> Entry for OnDemandTextEntryBox<'_, N> {
 	}
 }
 
-impl<'i, const N: usize> ParseAs for OnDemandTextEntryBox<'_, N> {
+impl<const N: usize> ParseAs for OnDemandTextEntryBox<'_, N> {
 	fn input_mut(&mut self) -> &mut String {
 		self.input
 	}
@@ -137,8 +137,8 @@ where
 	egui::Grid::new(grid_name)
 		.num_columns(T::ELEMENTS)
 		.show(ui, |ui| {
-			rows.map(|mut r| {
-				let res = r.draw(ui);
+			rows.map(|mut row| {
+				let res = row.draw(ui);
 				ui.end_row();
 				res
 			})
@@ -159,8 +159,8 @@ where
 		.num_columns(T::ELEMENTS)
 		.show(ui, |ui| {
 			rows.into_iter()
-				.map(|mut r| {
-					let res = r.draw(ui);
+				.map(|mut row| {
+					let res = row.draw(ui);
 					ui.end_row();
 					res
 				})
@@ -181,8 +181,8 @@ where
 	egui::Grid::new(grid_name)
 		.num_columns(T::ELEMENTS)
 		.show(ui, |ui| {
-			rows.map(|mut r| {
-				let res = r.parse_as::<O>(ui);
+			rows.map(|mut row| {
+				let res = row.parse_as::<O>(ui);
 				ui.end_row();
 				res
 			})
@@ -204,8 +204,8 @@ where
 		.num_columns(T::ELEMENTS)
 		.show(ui, |ui| {
 			rows.into_iter()
-				.map(|mut r| {
-					let res = r.parse_as::<O>(ui);
+				.map(|mut row| {
+					let res = row.parse_as::<O>(ui);
 					ui.end_row();
 					res
 				})
