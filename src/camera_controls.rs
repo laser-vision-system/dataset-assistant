@@ -1,12 +1,15 @@
-use edge::tcam_interface::{
-	CameraDevice,
-	controls::{
-		descriptions::{CamControl, IntegerRangeControl},
-		traits::{
-			ControlDefault, ControlDescription, ControlItems, ControlMax,
-			ControlMin, ControlStep, ControlValue,
+use edge::{
+	error::{EdgeError, Result},
+	tcam_interface::{
+		CameraDevice,
+		controls::{
+			descriptions::{CamControl, IntegerRangeControl},
+			traits::{
+				ControlDefault, ControlDescription, ControlItems, ControlMax,
+				ControlMin, ControlStep, ControlValue,
+			},
+			values::ConValueIntegerType,
 		},
-		values::ConValueIntegerType,
 	},
 };
 use nokhwa::utils::{KnownCameraControl, MenuItem};
@@ -87,7 +90,7 @@ impl ControlDescription for ControlManager {
 		self.base.get_id()
 	}
 
-	fn set_value(&mut self, value: Self::ValueType) -> Result<(), ()> {
+	fn set_value(&mut self, value: Self::ValueType) -> Result<()> {
 		self.base.set_value(value.into())?;
 		self.value = value;
 		Ok(())
@@ -141,11 +144,13 @@ impl ControlMax for ControlManager {
 }
 
 impl TryFrom<CamControl> for ControlManager {
-	type Error = ();
+	type Error = EdgeError;
 
-	fn try_from(value: CamControl) -> Result<Self, Self::Error> {
+	fn try_from(value: CamControl) -> Result<Self> {
 		let CamControl::IntegerRange(control) = value else {
-			return Err(());
+			return Err(EdgeError::General {
+				reason: "Wrong control type".into(),
+			});
 		};
 		Ok(Self {
 			base: control,
@@ -162,10 +167,12 @@ impl TryFrom<CamControl> for ControlManager {
 	}
 }
 
-pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<(), ()> {
+pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<()> {
 	let id = KnownCameraControl::AutoExposure;
 	let CamControl::Menu(control) = camera.get_control(id) else {
-		return Err(());
+		return Err(EdgeError::General {
+			reason: "Wrong control type".into(),
+		});
 	};
 	let items = control.get_items();
 	let valid_entires: Vec<_> = items
@@ -178,7 +185,9 @@ pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<(), ()> {
 			PATTERNS.into_iter().any(|pattern| name.contains(pattern))
 		})
 		.collect();
-	let &first = valid_entires.first().ok_or(())?;
+	let &first = valid_entires.first().ok_or(EdgeError::General {
+		reason: "Wrong control type".into(),
+	})?;
 	let mut value = control.get_value();
 	value.set_value(first.get_id());
 	camera

@@ -91,10 +91,7 @@ impl Saving {
 		capture: &mut Capture,
 		value_strings: ValueStrings,
 	) {
-		// To address latency, skip 4 frames.
-		camera.get_frame().unwrap();
-		camera.get_frame().unwrap();
-		camera.get_frame().unwrap();
+		// To address latency, skip 1 frame.
 		camera.get_frame().unwrap();
 		let frame = camera.get_frame().unwrap();
 		let image = camera.decode_image(frame).unwrap();
