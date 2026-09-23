@@ -4,7 +4,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use eframe::egui::TextBuffer;
+use eframe::egui::TextBuffer as _;
 
 use super::subset::Subset;
 use crate::settings::{
@@ -64,7 +64,7 @@ impl Dataset {
 				Some(Self::new(path))
 			},
 			// The root path is allow to contain files or subdirectories.
-			Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty => {
+			Err(why) if why.kind() == io::ErrorKind::DirectoryNotEmpty => {
 				label.replace_with(&format!(
 					"{}: {}/",
 					NON_EMPTY_DIRECTORY_SELECTED_LABEL,
@@ -72,8 +72,8 @@ impl Dataset {
 				));
 				Some(Self::new(path))
 			},
-			Err(e) => {
-				label.replace_with(&format!("{}: {e}", FAILED_DIRECTORY_LABEL));
+			Err(why) => {
+				label.replace_with(&format!("{FAILED_DIRECTORY_LABEL}: {why}"));
 				None
 			},
 		}
@@ -86,8 +86,8 @@ impl Dataset {
 				label.replace_with(&format!("Subset: {subset}"));
 				Some(subset)
 			},
-			Err(e) => {
-				label.replace_with(&format!("Failed to select subset: {e}"));
+			Err(why) => {
+				label.replace_with(&format!("Failed to select subset: {why}"));
 				None
 			},
 		}
@@ -95,10 +95,7 @@ impl Dataset {
 
 	pub fn try_create_path(&mut self) -> io::Result<PathBuf> {
 		let Some(subset) = self.subset.take() else {
-			return Err(io::Error::new(
-				io::ErrorKind::Other,
-				"subset has not been created",
-			));
+			return Err(io::Error::other("subset has not been created"));
 		};
 		let output_folder = subset.get_full_path(self.root.clone());
 		fs::create_dir_all(&output_folder)?;
@@ -137,13 +134,13 @@ mod tests {
 	#[test]
 	fn unavailable_path_file() {
 		let path = Path::new("./examples/dataset_assistant/saving/dataset.rs");
-		assert_matches!(is_path_available(path), Err(e) if e.kind() == io::ErrorKind::NotADirectory)
+		assert_matches!(is_path_available(path), Err(why) if why.kind() == io::ErrorKind::NotADirectory)
 	}
 
 	#[test]
 	fn unavailable_path_not_empty() {
 		let path = Path::new("./examples/dataset_assistant/");
-		assert_matches!(is_path_available(path), Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty)
+		assert_matches!(is_path_available(path), Err(why) if why.kind() == io::ErrorKind::DirectoryNotEmpty)
 	}
 
 	#[test]

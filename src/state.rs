@@ -1,8 +1,8 @@
 use edge::tcam_interface::{
 	CameraDevice,
-	controls::{traits::ControlDescription, values::ConValueIntegerType},
+	controls::{traits::ControlDescription as _, values::ConValueIntegerType},
 };
-use eframe::egui::{self, TextBuffer};
+use eframe::egui::{self, TextBuffer as _};
 use egui_file_dialog::FileDialog;
 
 use crate::{
@@ -30,6 +30,8 @@ enum Stage {
 }
 
 /// Internal program state.
+#[expect(clippy::partial_pub_fields, reason = "Jank ass state system")]
+#[expect(clippy::option_option, reason = "It works okay")]
 #[derive(Default)]
 pub struct State {
 	stage: Stage,
@@ -66,6 +68,7 @@ impl State {
 	// self.subset_path_label)
 	//}
 
+	#[expect(clippy::unwrap_used, reason = "Lazy developer")]
 	pub fn try_add_subset(&mut self, subset: Subset) {
 		self.dataset
 			.as_mut()
@@ -87,6 +90,8 @@ impl State {
 		};
 	}
 
+	#[expect(clippy::unwrap_used, reason = "Lazy developer")]
+	#[expect(clippy::print_stderr, reason = "Acceptable in this project")]
 	pub fn execute_for_preparation(
 		&mut self,
 		capture: &mut Capture,
@@ -103,31 +108,32 @@ impl State {
 			let root_path = dataset.get_root().to_path_buf();
 			let builder = Version::try_new(version, root_path)
 				.expect("`build_csv_selection` should only output 0 or 1");
-			self.stage = Stage::BuildingCSV(builder.into());
+			self.stage = Stage::BuildingCSV(builder);
 			return;
 		}
 
 		// CameraDevice
 
 		if let Some(should) = self.requested_cam_index.take() {
-			match should {
-				Some(index) => {
-					self.add_camera(index);
-					self.camera_id_label.replace_with(&format!("{index}"));
-				},
-				None => {
-					self.camera = None;
-					self.controls = Vec::new();
-					self.requested_controls.take();
-					self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
-				},
+			if let Some(index) = should {
+				self.add_camera(index);
+				self.camera_id_label.replace_with(&format!("{index}"));
+			} else {
+				self.camera = None;
+				self.controls = Vec::new();
+				self.requested_controls.take();
+				self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
 			}
 		}
 
 		if let Some(cam) = self.camera.as_mut()
 			&& let Some(requested_controls) = self.requested_controls.take()
 		{
-			debug_assert_eq!(self.controls.len(), requested_controls.len());
+			debug_assert_eq!(
+				self.controls.len(),
+				requested_controls.len(),
+				"Different sizes will cause data loss"
+			);
 
 			for (mut value, manager) in
 				requested_controls.into_iter().zip(&mut self.controls)
@@ -141,10 +147,8 @@ impl State {
 
 				let id = manager.get_id();
 				let newval = manager.base.get_value();
-				let reason = format!(
-					"value should be valid for {}, recieved '{}'",
-					id, val
-				);
+				let reason =
+					format!("value should be valid for {id}, recieved '{val}'");
 				cam.set_control(id, newval).expect(&reason);
 			}
 		}
@@ -155,19 +159,19 @@ impl State {
 			let cam = self.camera.as_mut().unwrap();
 			let frame = match cam.get_frame() {
 				Ok(frame) => frame,
-				Err(e) => {
-					eprintln!("Failed to get frame: {e}");
+				Err(why) => {
+					eprintln!("Failed to get frame: {why}");
 					return;
 				},
 			};
 			let image = match cam.decode_image(frame) {
 				Ok(image) => image,
-				Err(e) => {
-					eprintln!("Failed to decode to image: {e}");
+				Err(why) => {
+					eprintln!("Failed to decode to image: {why}");
 					return;
 				},
 			};
-			capture.store_image(image);
+			capture.store_image(&image);
 		}
 
 		// File dialog
@@ -186,38 +190,38 @@ impl State {
 	pub fn execute_for_collecting(&mut self, capture: &mut Capture) {
 		if let Stage::Collecting(saving) = &mut self.stage
 			&& let Some(cam) = self.camera.as_mut()
+			&& saving.pulse(cam, capture, &mut self.saving_progress)
 		{
-			if saving.pulse(cam, capture, &mut self.saving_progress) {
-				// TODO: See if I can play an alert sound.
-				self.stage = Stage::Preparation;
-			}
+			// TODO: See if I can play an alert sound.
+			self.stage = Stage::Preparation;
 		}
 	}
 
+	#[expect(clippy::print_stderr, reason = "Acceptable in this project")]
 	pub fn execute_for_building_csv(&mut self) {
 		let Stage::BuildingCSV(builder) = &mut self.stage else {
 			return;
 		};
 
 		if let Some(handle) = builder.is_done() {
-			handle
-				.join()
-				.err()
-				.inspect(|e| eprintln!("csv_builder returned with error: {e}"));
+			handle.join().err().inspect(|why| {
+				eprintln!("csv_builder returned with error: {why}");
+			});
 			self.stage = Stage::Preparation;
 		}
 	}
 
+	#[expect(clippy::unwrap_used, reason = "Lazy developer")]
+	#[expect(clippy::print_stderr, reason = "Acceptable in this project")]
 	pub fn try_to_collecting(&mut self) {
-		debug_assert!(self.is_complete());
 		let path = self.dataset.as_mut().unwrap().try_create_path();
 		match path {
 			Ok(path) => {
-				let control_sweeps = build_control_sweeps(&mut self.controls);
+				let control_sweeps = build_control_sweeps(&self.controls);
 				let saving = Saving::new(path, control_sweeps);
 				self.stage = Stage::Collecting(saving);
 			},
-			Err(e) => eprintln!("Error saving: {e}"),
+			Err(why) => eprintln!("Error saving: {why}"),
 		}
 	}
 
@@ -229,7 +233,7 @@ impl State {
 		matches!(self.stage, Stage::Collecting(_))
 	}
 
-	#[allow(dead_code)]
+	#[expect(dead_code, reason = "May be needed in future")]
 	pub fn current_state_is_building_csv(&self) -> bool {
 		matches!(self.stage, Stage::BuildingCSV(_))
 	}

@@ -20,6 +20,10 @@ pub struct Builder {
 }
 
 impl Builder {
+	#[expect(
+		clippy::unwrap_used,
+		reason = "Unlikely to happen, and panic is desired"
+	)]
 	pub fn new(path: PathBuf) -> Self {
 		let handle = thread::Builder::new()
 			.name("csv_builder".into())
@@ -56,12 +60,13 @@ struct DatasetEntry {
 }
 
 /// Main execution pipeline for the CSV builder thread.
+#[expect(clippy::needless_pass_by_value, reason = "This should be consuming")]
 fn run(root_path: PathBuf) -> Result<()> {
 	let mut entry_stream = WalkDir::new(&root_path)
 		.min_depth(1)
 		.into_iter()
 		.filter_entry(common::is_not_git_dir)
-		.filter_map(|e| e.ok())
+		.filter_map(std::result::Result::ok)
 		.filter(common::is_image_file)
 		.map(|entry| create_dataset_entry(&root_path, &entry));
 
@@ -140,7 +145,7 @@ fn parse_metadata_line(line: &str) -> Result<MetadataField> {
 	})?;
 
 	Ok(MetadataField {
-		key: key.trim().to_string(),
+		key: key.trim().to_owned(),
 		value: parsed_value,
 	})
 }
@@ -171,9 +176,9 @@ fn write_headers(
 	first_entry: &DatasetEntry,
 ) -> Result<()> {
 	let mut headers = vec![
-		"relative_path".to_string(),
-		"position".to_string(),
-		"intensity".to_string(),
+		"relative_path".to_owned(),
+		"position".to_owned(),
+		"intensity".to_owned(),
 	];
 
 	for field in &first_entry.metadata {

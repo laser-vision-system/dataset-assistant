@@ -31,10 +31,10 @@ impl Capture {
 		}
 	}
 
-	pub fn store_image(&mut self, image: RgbImage) {
+	pub fn store_image(&mut self, image: &RgbImage) {
 		let image_arc = Arc::new(egui::ColorImage::from_rgb(
 			[TEXTURE_WIDTH, TEXTURE_HEIGHT],
-			&image,
+			image,
 		));
 		self.image = Some(image_arc.clone());
 		self.texture
@@ -51,6 +51,11 @@ impl Capture {
 		}
 	}
 
+	#[expect(clippy::print_stderr, reason = "Acceptable in this project")]
+	#[expect(
+		clippy::cast_possible_truncation,
+		reason = "The image dimensions will never get big enough to matter"
+	)]
 	pub fn save_to_file(&mut self, path: &PathBuf) {
 		let Some(capture) = self.image.as_ref() else {
 			eprintln!("No image to save");
@@ -64,9 +69,8 @@ impl Capture {
 			capture.height() as u32,
 			image::ColorType::Rgba8,
 		);
-		match res {
-			Err(e) => eprintln!("Error saving capture {e}"),
-			_ => (),
-		};
+		if let Err(why) = res {
+			eprintln!("Error saving capture {why}");
+		}
 	}
 }

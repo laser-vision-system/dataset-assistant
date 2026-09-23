@@ -66,6 +66,10 @@
 //!  └─ ...
 //! ```
 
+#![expect(
+	clippy::expect_used,
+	reason = "This project is allowed to panic when unexpected things happen"
+)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // Hide console window on Windows in release.
 
 use eframe::{

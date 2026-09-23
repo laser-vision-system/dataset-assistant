@@ -3,7 +3,7 @@ use std::{fmt, iter::StepBy, ops::RangeInclusive};
 use edge::tcam_interface::{
 	CameraDevice,
 	controls::{
-		traits::{ControlDefault, ControlDescription},
+		traits::{ControlDefault as _, ControlDescription as _},
 		values::{ConValueInteger, ConValueIntegerType},
 	},
 };
@@ -33,9 +33,13 @@ impl ControlSweep {
 		}
 	}
 
+	#[expect(
+		clippy::unwrap_used,
+		reason = "This will only be called when a new active iter is made"
+	)]
 	fn update_value(&mut self) {
 		self.control
-			.set_value(self.active_iter.next().unwrap().into())
+			.set_value(self.active_iter.next().unwrap())
 			.expect("control should always be set to a valid value");
 	}
 
@@ -43,6 +47,14 @@ impl ControlSweep {
 		self.control.base.get_value()
 	}
 
+	#[expect(
+		clippy::cast_sign_loss,
+		reason = "Step will never be a negative number"
+	)]
+	#[expect(
+		clippy::cast_possible_truncation,
+		reason = "Step size will never be big enough"
+	)]
 	fn create_range(
 		manager: &ControlManager,
 	) -> StepBy<RangeInclusive<ConValueIntegerType>> {
@@ -70,12 +82,12 @@ impl ControlSweep {
 impl From<ControlManager> for ControlSweep {
 	fn from(value: ControlManager) -> Self {
 		let active_iter = Self::create_range(&value);
-		let mut s = Self {
+		let mut new = Self {
 			control: value,
 			active_iter,
 		};
-		s.update_value();
-		s
+		new.update_value();
+		new
 	}
 }
 
