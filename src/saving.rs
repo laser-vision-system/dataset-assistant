@@ -98,9 +98,9 @@ impl Saving {
 		value_strings: ValueStrings,
 	) {
 		// To address latency, skip 1 frame.
-		camera.get_frame().unwrap();
-		let frame = camera.get_frame().unwrap();
-		let image = camera.decode_image(frame).unwrap();
+		camera.get_frame_buffer().unwrap();
+		let buffer = camera.get_frame_buffer().unwrap();
+		let image = camera.decode_buffer(buffer).unwrap();
 		capture.store_image(&image);
 		let img_filepath = self.path.join(format!(
 			"{}{}.{}",

@@ -78,9 +78,9 @@ impl State {
 
 	fn add_camera(&mut self, index: u32) {
 		let index = nokhwa::utils::CameraIndex::Index(index);
-		self.camera = match CameraDevice::new(index) {
+		self.camera = match CameraDevice::try_new_open(index) {
 			Ok(mut camera) => {
-				camera.reset_controls_to_default();
+				//camera.reset_controls_to_default();
 				let skip_exposure =
 					try_disable_auto_exposure(&mut camera).is_err();
 				self.controls = extract_controls(&mut camera, skip_exposure);
@@ -157,14 +157,14 @@ impl State {
 
 		if request_capture || self.live_feed {
 			let cam = self.camera.as_mut().unwrap();
-			let frame = match cam.get_frame() {
+			let buffer = match cam.get_frame_buffer() {
 				Ok(frame) => frame,
 				Err(why) => {
 					eprintln!("Failed to get frame: {why}");
 					return;
 				},
 			};
-			let image = match cam.decode_image(frame) {
+			let image = match cam.decode_buffer(buffer) {
 				Ok(image) => image,
 				Err(why) => {
 					eprintln!("Failed to decode to image: {why}");
