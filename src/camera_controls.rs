@@ -1,7 +1,7 @@
 use edge::{
 	error::{EdgeError, Result},
 	tcam_interface::{
-		CameraDevice,
+		CameraDevice, CameraDeviceError,
 		controls::{
 			descriptions::{CamControl, IntegerRangeControl},
 			traits::{
@@ -171,10 +171,8 @@ impl TryFrom<CamControl> for ControlManager {
 
 pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<()> {
 	let id = KnownCameraControl::AutoExposure;
-	let CamControl::Menu(control) = camera.get_control(id) else {
-		return Err(EdgeError::General {
-			reason: "Wrong control type".into(),
-		});
+	let CamControl::Menu(control) = camera.get_control(id)? else {
+		return Err(EdgeError::from(CameraDeviceError::GetControlType(id)));
 	};
 	let items = control.get_items();
 	let valid_entires: Vec<_> = items
@@ -205,7 +203,8 @@ pub fn extract_controls(
 	camera: &mut CameraDevice,
 	skip_exposure: bool,
 ) -> Vec<ControlManager> {
-	let available_controls = camera.get_controls();
+	let available_controls =
+		camera.get_controls().expect("always have controls");
 	let mut variants = Vec::with_capacity(available_controls.len());
 
 	for (id, cam_control) in available_controls.into_inner() {
