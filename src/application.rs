@@ -49,7 +49,10 @@ impl DatasetAssistantApp {
 			.inner;
 
 		ui.add_enabled_ui(self.state.current_state_is_collecting(), |ui| {
-			UserInterface::draw_collecting(ui, &self.state.saving_progress);
+			UserInterface::draw_collecting(
+				ui,
+				self.state.get_saving_progress(),
+			);
 		});
 
 		requested_capture
@@ -58,32 +61,38 @@ impl DatasetAssistantApp {
 	fn ui_section(&mut self, ui: &mut egui::Ui) {
 		UserInterface::add_subheading(ui, "UI");
 		ui.indent("ui", |ui| {
-			ui.toggle_value(&mut self.state.show_display, "Show display panel");
+			ui.toggle_value(
+				self.state.get_show_display_mut(),
+				"Show display panel",
+			);
 		});
 	}
 
 	fn directory_section(&mut self, ui: &mut egui::Ui) {
 		UserInterface::add_subheading(ui, "Directory");
 		ui.indent("directory", |ui| {
-			ui.add_enabled_ui(!self.state.live_feed, |ui| {
-				ui.label(&self.state.dataset_path_label);
-				self.state.chose_folder = UserInterface::choose_folder(ui);
+			ui.add_enabled_ui(!self.state.get_live_feed(), |ui| {
+				ui.label(self.state.get_dataset_path_label());
+				self.state
+					.set_chose_folder(UserInterface::choose_folder(ui));
 
 				ui.separator();
 
-				ui.label(&self.state.subset_path_label);
+				ui.label(self.state.get_subset_path_label());
 				ui.add_enabled_ui(self.state.is_dataset(), |ui| {
 					if let Some(selection) =
 						UserInterface::build_csv_selection(ui)
 					{
-						self.state.should_build_csv = selection;
+						self.state.set_should_build_csv(selection);
 					}
 
+					let (camera_position_input, laser_intensity_input) =
+						self.state.get_subset_inputs();
 					if let Some(subset) =
 						UserInterface::display_subset_entry_grid(
 							ui,
-							&mut self.state.camera_position_input,
-							&mut self.state.laser_intensity_input,
+							camera_position_input,
+							laser_intensity_input,
 						) {
 						self.state.try_add_subset(subset);
 					}
@@ -95,12 +104,12 @@ impl DatasetAssistantApp {
 	fn camera_section(&mut self, ui: &mut egui::Ui) -> bool {
 		UserInterface::add_subheading(ui, "Camera");
 		ui.indent("camera", |ui| {
-			ui.add_enabled_ui(!self.state.live_feed, |ui| {
+			ui.add_enabled_ui(!self.state.get_live_feed(), |ui| {
 				if let Some(selection) = UserInterface::camera_selection(
 					ui,
-					&self.state.camera_id_label,
+					self.state.get_camera_id_label(),
 				) {
-					self.state.requested_cam_index = selection;
+					self.state.set_requested_cam_index(selection);
 				}
 			});
 
@@ -110,18 +119,17 @@ impl DatasetAssistantApp {
 				.add_enabled_ui(self.state.is_camera(), |ui| {
 					UserInterface::capture_controls(
 						ui,
-						&mut self.state.live_feed,
+						self.state.get_live_feed_mut(),
 					)
 				})
 				.inner;
 
 			if self.state.is_camera() {
 				ui.collapsing("Controls:", |ui| {
-					self.state.requested_controls =
-						UserInterface::draw_controls(
-							ui,
-							&mut self.state.controls.iter_mut().collect(),
-						);
+					let mut controls = self.state.get_controls();
+					let requested_controls =
+						UserInterface::draw_controls(ui, &mut controls);
+					self.state.set_requested_controls(requested_controls);
 				});
 			}
 
@@ -141,7 +149,7 @@ impl DatasetAssistantApp {
 
 		self.state.execute_for_building_csv();
 
-		if self.state.live_feed
+		if self.state.get_live_feed()
 			|| requested_capture
 			|| self.state.current_state_is_collecting()
 		{
@@ -152,9 +160,9 @@ impl DatasetAssistantApp {
 
 impl eframe::App for DatasetAssistantApp {
 	fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-		let show_display_prior = self.state.show_display;
+		let show_display = self.state.get_show_display();
 
-		if self.state.show_display {
+		if show_display {
 			display_panel(ui).show(ui, |ui| {
 				self.capture.display_image(ui);
 			});
@@ -165,8 +173,9 @@ impl eframe::App for DatasetAssistantApp {
 
 		self.update(ui, requested_capture);
 
-		if show_display_prior != self.state.show_display {
-			if self.state.show_display {
+		let new_show_display = self.state.get_show_display();
+		if show_display != new_show_display {
+			if new_show_display {
 				when_display(ui);
 			} else {
 				when_no_display(ui);

@@ -33,7 +33,6 @@ enum Stage {
 }
 
 /// Internal program state.
-#[expect(clippy::partial_pub_fields, reason = "Jank ass state system")]
 #[expect(clippy::option_option, reason = "It works okay")]
 #[derive(Default)]
 pub struct State {
@@ -41,19 +40,19 @@ pub struct State {
 	file_dialog: FileDialog,
 	camera: Option<CameraDevice>,
 	dataset: Option<Dataset>,
-	pub camera_id_label: String,
-	pub dataset_path_label: String,
-	pub subset_path_label: String,
-	pub requested_cam_index: Option<Option<u32>>,
-	pub live_feed: bool,
-	pub chose_folder: bool,
-	pub saving_progress: String,
-	pub camera_position_input: String,
-	pub laser_intensity_input: String,
-	pub controls: Vec<ControlManager>,
-	pub requested_controls: Option<Vec<Option<ConValueIntegerType>>>,
-	pub should_build_csv: Option<u8>,
-	pub show_display: bool,
+	camera_id_label: String,
+	dataset_path_label: String,
+	subset_path_label: String,
+	requested_cam_index: Option<Option<u32>>,
+	live_feed: bool,
+	chose_folder: bool,
+	saving_progress: String,
+	camera_position_input: String,
+	laser_intensity_input: String,
+	controls: Vec<ControlManager>,
+	requested_controls: Option<Vec<Option<ConValueIntegerType>>>,
+	should_build_csv: Option<u8>,
+	show_display: bool,
 }
 
 /// Associated functions.
@@ -119,6 +118,71 @@ impl State {
 			},
 			Err(_) => None,
 		};
+	}
+
+	pub fn set_chose_folder(&mut self, state: bool) {
+		self.chose_folder = state;
+	}
+
+	pub fn set_should_build_csv(&mut self, state: Option<u8>) {
+		self.should_build_csv = state;
+	}
+
+	pub fn set_requested_cam_index(&mut self, state: Option<Option<u32>>) {
+		self.requested_cam_index = state;
+	}
+
+	pub fn set_requested_controls(
+		&mut self,
+		state: Option<Vec<Option<ConValueIntegerType>>>,
+	) {
+		self.requested_controls = state;
+	}
+}
+
+/// Getters.
+impl State {
+	pub fn get_saving_progress(&self) -> &str {
+		&self.saving_progress
+	}
+
+	pub fn get_show_display(&mut self) -> bool {
+		self.show_display
+	}
+
+	pub fn get_show_display_mut(&mut self) -> &mut bool {
+		&mut self.show_display
+	}
+
+	pub fn get_live_feed(&self) -> bool {
+		self.live_feed
+	}
+
+	pub fn get_live_feed_mut(&mut self) -> &mut bool {
+		&mut self.live_feed
+	}
+
+	pub fn get_dataset_path_label(&self) -> &str {
+		&self.dataset_path_label
+	}
+
+	pub fn get_subset_path_label(&self) -> &str {
+		&self.subset_path_label
+	}
+
+	pub fn get_subset_inputs(&mut self) -> (&mut String, &mut String) {
+		(
+			&mut self.camera_position_input,
+			&mut self.laser_intensity_input,
+		)
+	}
+
+	pub fn get_camera_id_label(&self) -> &str {
+		&self.camera_id_label
+	}
+
+	pub fn get_controls(&mut self) -> Vec<&mut ControlManager> {
+		self.controls.iter_mut().collect()
 	}
 }
 
@@ -259,7 +323,7 @@ impl State {
 	}
 }
 
-/// BuildingCSV state.
+/// `BuildingCSV` state.
 impl State {
 	pub fn execute_for_building_csv(&mut self) {
 		let Stage::BuildingCSV(builder) = &mut self.stage else {
