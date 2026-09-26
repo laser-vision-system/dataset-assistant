@@ -218,6 +218,7 @@ impl State {
 		}
 
 		self.prep_cam_dev();
+		self.prep_cam_controls();
 		self.prep_capture(capture, request_capture);
 		self.prep_file_dialog(ui);
 	}
@@ -247,7 +248,9 @@ impl State {
 				self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
 			}
 		}
+	}
 
+	fn prep_cam_controls(&mut self) {
 		if let Some(cam) = self.camera.as_mut()
 			&& let Some(requested_controls) = self.requested_controls.take()
 		{
