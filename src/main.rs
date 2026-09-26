@@ -92,22 +92,23 @@ use eframe::{
 #[cfg(target_os = "linux")]
 use winit::platform::wayland::EventLoopBuilderExtWayland as _; // Bring into context.
 
-mod settings;
-use settings::{WINDOW_HEIGHT, WINDOW_WIDTH};
-
 mod application;
-use application::DatasetAssistantApp;
-
 mod camera_controls;
 mod capture;
 mod csv_builder;
 mod dataset;
 mod entry;
 mod saving;
+mod settings;
 mod state;
 mod subset;
 mod sweep;
 mod user_interface;
+
+use self::{
+	application::DatasetAssistantApp,
+	settings::{CONTROLS_WIDTH_MAX, CONTROLS_WIDTH_MIN, WINDOW_HEIGHT},
+};
 
 fn main() -> eframe::Result {
 	let event_loop_builder: Option<EventLoopBuilderHook> = cfg_select! {
@@ -123,7 +124,9 @@ fn main() -> eframe::Result {
 		event_loop_builder,
 		renderer: Renderer::Glow,
 		viewport: ViewportBuilder::default()
-			.with_inner_size([WINDOW_WIDTH, WINDOW_HEIGHT]),
+			.with_inner_size([CONTROLS_WIDTH_MIN, WINDOW_HEIGHT])
+			.with_min_inner_size([CONTROLS_WIDTH_MIN, WINDOW_HEIGHT])
+			.with_max_inner_size([CONTROLS_WIDTH_MAX, 0.0]),
 		..NativeOptions::default()
 	};
 

@@ -1,8 +1,11 @@
-use eframe::egui;
+use eframe::egui::{self, Vec2};
 
 use crate::{
 	capture::Capture,
-	settings::{CONTROLS_WIDTH_MAX, CONTROLS_WIDTH_MIN},
+	settings::{
+		CONTROLS_WIDTH_MAX, CONTROLS_WIDTH_MIN, TEXTURE_WIDTH, WINDOW_HEIGHT,
+		WINDOW_WIDTH,
+	},
 	state::State,
 	user_interface::UserInterface,
 };
@@ -23,8 +26,10 @@ impl DatasetAssistantApp {
 
 	fn main(&mut self, ui: &mut egui::Ui) {
 		let mut request_capture = false;
-		ui.set_width_range(CONTROLS_WIDTH_MIN..=CONTROLS_WIDTH_MAX);
 		UserInterface::add_heading(ui);
+
+		ui.toggle_value(&mut self.state.show_display, "Show display");
+
 		UserInterface::add_subheading(ui, "Directory");
 
 		ui.add_enabled_ui(self.state.current_state_is_preparation(), |ui| {
@@ -117,26 +122,63 @@ impl DatasetAssistantApp {
 			ui.request_repaint();
 		}
 	}
-
-	fn display(&mut self, ui: &mut egui::Ui) {
-		self.capture.display_image(ui);
-	}
 }
 
 impl eframe::App for DatasetAssistantApp {
 	fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-		egui::Panel::left("controls").show(ui, |ui| {
+		let show_display_prior = self.state.show_display;
+
+		let fill = ui.style().visuals.panel_fill;
+		let frame = egui::Frame::new().inner_margin(0).fill(fill);
+		let panel = egui::Panel::right("display")
+			.frame(frame)
+			.resizable(false)
+			.min_size(TEXTURE_WIDTH as f32);
+		//.max_size(TEXTURE_WIDTH as f32);
+		panel.show_collapsible(ui, &mut self.state.show_display, |ui| {
+			self.capture.display_image(ui);
+		});
+
+		egui::CentralPanel::default_margins().show(ui, |ui| {
 			ui.style_mut().spacing.scroll = egui::style::ScrollStyle::solid();
 			egui::ScrollArea::vertical().show(ui, |ui| {
 				self.main(ui);
 			});
 		});
 
-		let fill = ui.style().visuals.panel_fill;
-		let frame = egui::Frame::new().inner_margin(0).fill(fill);
-		let panel = egui::CentralPanel::default_margins().frame(frame);
-		panel.show(ui, |ui| {
-			self.display(ui);
-		});
+		if show_display_prior != self.state.show_display {
+			if self.state.show_display {
+				when_display(ui);
+			} else {
+				when_no_display(ui);
+			}
+		}
 	}
+}
+
+fn when_display(ui: &mut egui::Ui) {
+	set_viewport_bounds(ui, [WINDOW_WIDTH, WINDOW_HEIGHT], [0.0, 0.0]);
+	set_viewport_size(ui, [WINDOW_WIDTH, ui.viewport_rect().height()]);
+}
+
+fn when_no_display(ui: &mut egui::Ui) {
+	set_viewport_bounds(
+		ui,
+		[CONTROLS_WIDTH_MIN, WINDOW_HEIGHT],
+		[CONTROLS_WIDTH_MAX, 0.0],
+	);
+	set_viewport_size(ui, [CONTROLS_WIDTH_MAX, ui.viewport_rect().height()]);
+}
+
+fn set_viewport_bounds(
+	ui: &mut egui::Ui,
+	min: impl Into<Vec2>,
+	max: impl Into<Vec2>,
+) {
+	ui.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min.into()));
+	ui.send_viewport_cmd(egui::ViewportCommand::MaxInnerSize(max.into()));
+}
+
+fn set_viewport_size(ui: &mut egui::Ui, size: impl Into<Vec2>) {
+	ui.send_viewport_cmd(egui::ViewportCommand::InnerSize(size.into()));
 }

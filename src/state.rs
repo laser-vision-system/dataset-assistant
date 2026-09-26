@@ -50,6 +50,7 @@ pub struct State {
 	pub controls: Vec<ControlManager>,
 	pub requested_controls: Option<Vec<Option<ConValueIntegerType>>>,
 	pub should_build_csv: Option<u8>,
+	pub show_display: bool,
 }
 
 impl State {
@@ -80,7 +81,7 @@ impl State {
 		let index = nokhwa::utils::CameraIndex::Index(index);
 		self.camera = match CameraDevice::try_new_open(index) {
 			Ok(mut camera) => {
-				//camera.reset_controls_to_default();
+				// camera.reset_controls_to_default();
 				let skip_exposure =
 					try_disable_auto_exposure(&mut camera).is_err();
 				self.controls = extract_controls(&mut camera, skip_exposure);

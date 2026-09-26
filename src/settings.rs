@@ -1,22 +1,19 @@
+#![expect(
+	clippy::cast_precision_loss,
+	reason = "The window dimensions will never get big enough to matter"
+)]
+
 //! # Settings
 //!
 //! Compile-time constants.
 
 pub const TEXTURE_WIDTH: usize = 640;
 pub const TEXTURE_HEIGHT: usize = 480;
-// Doesn't really have an effect because of text entry width.
+
 pub const CONTROLS_WIDTH_MIN: f32 = 300.0;
 pub const CONTROLS_WIDTH_MAX: f32 = 375.0;
 
-#[expect(
-	clippy::cast_precision_loss,
-	reason = "The window dimensions will never get big enough to matter"
-)]
 pub const WINDOW_WIDTH: f32 = TEXTURE_WIDTH as f32 + CONTROLS_WIDTH_MAX;
-#[expect(
-	clippy::cast_precision_loss,
-	reason = "The window dimensions will never get big enough to matter"
-)]
 pub const WINDOW_HEIGHT: f32 = TEXTURE_HEIGHT as f32;
 
 pub const HEADING_FONT_SIZE: f32 = 18.0;
