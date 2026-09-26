@@ -103,6 +103,16 @@ impl State {
 			return;
 		}
 
+		if self.prep_build_csv() {
+			return;
+		}
+
+		self.prep_cam_dev();
+		self.prep_capture(capture, request_capture);
+		self.prep_file_dialog(ui);
+	}
+
+	fn prep_build_csv(&mut self) -> bool {
 		if let Some(dataset) = self.dataset.as_ref()
 			&& let Some(version) = self.should_build_csv.take()
 		{
@@ -110,11 +120,12 @@ impl State {
 			let builder = Version::try_new(version, root_path)
 				.expect("`build_csv_selection` should only output 0 or 1");
 			self.stage = Stage::BuildingCSV(builder);
-			return;
+			return true;
 		}
+		false
+	}
 
-		// CameraDevice
-
+	fn prep_cam_dev(&mut self) {
 		if let Some(should) = self.requested_cam_index.take() {
 			if let Some(index) = should {
 				self.add_camera(index);
@@ -153,9 +164,9 @@ impl State {
 				cam.set_control(id, newval).expect(&reason);
 			}
 		}
+	}
 
-		// Capture
-
+	fn prep_capture(&mut self, capture: &mut Capture, request_capture: bool) {
 		if request_capture || self.live_feed {
 			let cam = self.camera.as_mut().unwrap();
 			let buffer = match cam.get_frame_buffer() {
@@ -174,9 +185,9 @@ impl State {
 			};
 			capture.store_image(&image);
 		}
+	}
 
-		// File dialog
-
+	fn prep_file_dialog(&mut self, ui: &mut egui::Ui) {
 		if self.chose_folder {
 			self.file_dialog.pick_directory();
 		}
