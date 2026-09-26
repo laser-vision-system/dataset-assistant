@@ -1,3 +1,6 @@
+#![expect(clippy::unwrap_used, reason = "Lazy developer")]
+#![expect(clippy::print_stderr, reason = "Acceptable in this project")]
+
 use edge::tcam_interface::{
 	CameraDevice,
 	controls::{traits::ControlDescription as _, values::ConValueIntegerType},
@@ -69,7 +72,6 @@ impl State {
 	// self.subset_path_label)
 	//}
 
-	#[expect(clippy::unwrap_used, reason = "Lazy developer")]
 	pub fn try_add_subset(&mut self, subset: Subset) {
 		self.dataset
 			.as_mut()
@@ -91,8 +93,6 @@ impl State {
 		};
 	}
 
-	#[expect(clippy::unwrap_used, reason = "Lazy developer")]
-	#[expect(clippy::print_stderr, reason = "Acceptable in this project")]
 	pub fn execute_for_preparation(
 		&mut self,
 		capture: &mut Capture,
@@ -198,7 +198,6 @@ impl State {
 		}
 	}
 
-	#[expect(clippy::print_stderr, reason = "Acceptable in this project")]
 	pub fn execute_for_building_csv(&mut self) {
 		let Stage::BuildingCSV(builder) = &mut self.stage else {
 			return;
@@ -212,8 +211,6 @@ impl State {
 		}
 	}
 
-	#[expect(clippy::unwrap_used, reason = "Lazy developer")]
-	#[expect(clippy::print_stderr, reason = "Acceptable in this project")]
 	pub fn try_to_collecting(&mut self) {
 		let path = self.dataset.as_mut().unwrap().try_create_path();
 		match path {
@@ -232,11 +229,6 @@ impl State {
 
 	pub fn current_state_is_collecting(&self) -> bool {
 		matches!(self.stage, Stage::Collecting(_))
-	}
-
-	#[expect(dead_code, reason = "May be needed in future")]
-	pub fn current_state_is_building_csv(&self) -> bool {
-		matches!(self.stage, Stage::BuildingCSV(_))
 	}
 
 	pub fn is_complete(&self) -> bool {
