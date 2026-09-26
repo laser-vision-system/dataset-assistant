@@ -37,22 +37,77 @@ enum Stage {
 #[derive(Default)]
 pub struct State {
 	stage: Stage,
-	file_dialog: FileDialog,
-	camera: Option<CameraDevice>,
-	dataset: Option<Dataset>,
-	camera_id_label: String,
-	dataset_path_label: String,
-	subset_path_label: String,
-	requested_cam_index: Option<Option<u32>>,
-	live_feed: bool,
+
+	/// Set externally, consumed when read; glorified parameter input.
+	/// Will change [`stage`](Stage), not coupled to it.
+	/// Transient.
+	should_build_csv: Option<u8>,
+
+	/// Set externally, read locally; glorified parameter input.
+	/// Remotely polls button input.
+	/// Coupled to [`file_dialog`](FileDialog).
+	/// Semi-transient.
 	chose_folder: bool,
-	saving_progress: String,
+	/// Only accessed mutably. Uses chose folder to produce a dataset.
+	/// Cohesion with [`dataset`](Dataset).
+	/// Persistent.
+	file_dialog: FileDialog,
+	/// Created by file dialog and used to set subset, try for collecting, or
+	/// build csv. Only set back to None when selecting an invalid path.
+	/// Deeply coupled [here](self).
+	/// Semi-persistent.
+	dataset: Option<Dataset>,
+	/// Set when choosing dataset, only diplayed once.
+	/// Coupled to [here](self) and [`dataset`](Dataset).
+	/// Persistent.
+	dataset_path_label: String,
+
+	/// These two are only ever used in the UI for the subset grid.
+	/// Coupled to [`Subset`].
+	/// Persistent.
 	camera_position_input: String,
 	laser_intensity_input: String,
+	/// Set when adding subset, only diplayed once.
+	/// Coupled to [here](self) and [`dataset`](Dataset)/[`Subset`].
+	/// Persistent.
+	subset_path_label: String,
+
+	/// Set externally, consumed when read; glorified parameter input.
+	/// Coupled to [`camera`](CameraDevice).
+	/// Transient.
+	requested_cam_index: Option<Option<u32>>,
+	/// Only set with requested cam index, used for controls, capture, and collecting.
+	/// Deeply coupled [here](self).
+	/// Semi-peristent.
+	camera: Option<CameraDevice>,
+	/// Set when selecting camera, only diplayed once.
+	/// Coupled to [here](self) and [`camera`](CameraDevice).
+	/// Persistent.
+	camera_id_label: String,
+	/// Set when adding camera, used when changing controls or building sweeps for collecting.
+	/// Coupled to [`camera`](CameraDevice).
+	/// Semi-persistent.
 	controls: Vec<ControlManager>,
+	/// Set externally, consumed when read; glorified parameter input.
+	/// Coupled to [`camera`](CameraDevice) and [`controls`](ControlManager).
+	/// Transient.
 	requested_controls: Option<Vec<Option<ConValueIntegerType>>>,
-	should_build_csv: Option<u8>,
+
+	/// Toggled in one placed and use extensively in app and ui.
+	/// Locally guards reading from camera.
+	/// Lightly coupled to [`camera`](CameraDevice).
+	/// Persistent.
+	live_feed: bool,
+
+	/// Set and used externally. Never used locally.
+	/// Intended to be used with live feed.
+	/// Peristent.
 	show_display: bool,
+
+	/// Set in saving pulse and used in UI draw collecting.
+	/// Coupled to [here](self) and [`Saving`].
+	/// Persistent.
+	saving_progress_label: String,
 }
 
 /// Associated functions.
@@ -143,7 +198,7 @@ impl State {
 /// Getters.
 impl State {
 	pub fn get_saving_progress(&self) -> &str {
-		&self.saving_progress
+		&self.saving_progress_label
 	}
 
 	pub fn get_show_display(&mut self) -> bool {
@@ -318,7 +373,7 @@ impl State {
 	pub fn execute_for_collecting(&mut self, capture: &mut Capture) {
 		if let Stage::Collecting(saving) = &mut self.stage
 			&& let Some(cam) = self.camera.as_mut()
-			&& saving.pulse(cam, capture, &mut self.saving_progress)
+			&& saving.pulse(cam, capture, &mut self.saving_progress_label)
 		{
 			// TODO: See if I can play an alert sound.
 			self.stage = Stage::Preparation;
