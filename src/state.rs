@@ -56,6 +56,7 @@ pub struct State {
 	pub show_display: bool,
 }
 
+/// Associated functions.
 impl State {
 	pub fn new() -> Self {
 		Self {
@@ -65,13 +66,40 @@ impl State {
 			..Default::default()
 		}
 	}
+}
 
-	// pub fn get_state_label(&self) -> String {
-	// 	// TODO: Replace this will a proper breakdown of the current program
-	// state. 	format!("{}\n{}", self.dataset_path_label,
-	// self.subset_path_label)
-	//}
+/// Queries.
+impl State {
+	pub fn current_state_is_preparation(&self) -> bool {
+		matches!(self.stage, Stage::Preparation)
+	}
 
+	pub fn current_state_is_collecting(&self) -> bool {
+		matches!(self.stage, Stage::Collecting(_))
+	}
+
+	pub fn is_complete(&self) -> bool {
+		if self.camera.is_some()
+			&& let Some(dataset) = self.dataset.as_ref()
+			&& dataset.is_subset()
+		{
+			true
+		} else {
+			false
+		}
+	}
+
+	pub fn is_camera(&self) -> bool {
+		self.camera.is_some()
+	}
+
+	pub fn is_dataset(&self) -> bool {
+		self.dataset.is_some()
+	}
+}
+
+/// Setters.
+impl State {
 	pub fn try_add_subset(&mut self, subset: Subset) {
 		self.dataset
 			.as_mut()
@@ -92,7 +120,25 @@ impl State {
 			Err(_) => None,
 		};
 	}
+}
 
+/// State changers.
+impl State {
+	pub fn try_to_collecting(&mut self) {
+		let path = self.dataset.as_mut().unwrap().try_create_path();
+		match path {
+			Ok(path) => {
+				let control_sweeps = build_control_sweeps(&self.controls);
+				let saving = Saving::new(path, control_sweeps);
+				self.stage = Stage::Collecting(saving);
+			},
+			Err(why) => eprintln!("Error saving: {why}"),
+		}
+	}
+}
+
+/// Preparation state.
+impl State {
 	pub fn execute_for_preparation(
 		&mut self,
 		capture: &mut Capture,
@@ -198,7 +244,10 @@ impl State {
 			self.dataset = Dataset::try_new(path, &mut self.dataset_path_label);
 		}
 	}
+}
 
+/// Collecting state.
+impl State {
 	pub fn execute_for_collecting(&mut self, capture: &mut Capture) {
 		if let Stage::Collecting(saving) = &mut self.stage
 			&& let Some(cam) = self.camera.as_mut()
@@ -208,7 +257,10 @@ impl State {
 			self.stage = Stage::Preparation;
 		}
 	}
+}
 
+/// BuildingCSV state.
+impl State {
 	pub fn execute_for_building_csv(&mut self) {
 		let Stage::BuildingCSV(builder) = &mut self.stage else {
 			return;
@@ -220,44 +272,5 @@ impl State {
 			});
 			self.stage = Stage::Preparation;
 		}
-	}
-
-	pub fn try_to_collecting(&mut self) {
-		let path = self.dataset.as_mut().unwrap().try_create_path();
-		match path {
-			Ok(path) => {
-				let control_sweeps = build_control_sweeps(&self.controls);
-				let saving = Saving::new(path, control_sweeps);
-				self.stage = Stage::Collecting(saving);
-			},
-			Err(why) => eprintln!("Error saving: {why}"),
-		}
-	}
-
-	pub fn current_state_is_preparation(&self) -> bool {
-		matches!(self.stage, Stage::Preparation)
-	}
-
-	pub fn current_state_is_collecting(&self) -> bool {
-		matches!(self.stage, Stage::Collecting(_))
-	}
-
-	pub fn is_complete(&self) -> bool {
-		if self.camera.is_some()
-			&& let Some(dataset) = self.dataset.as_ref()
-			&& dataset.is_subset()
-		{
-			true
-		} else {
-			false
-		}
-	}
-
-	pub fn is_camera(&self) -> bool {
-		self.camera.is_some()
-	}
-
-	pub fn is_dataset(&self) -> bool {
-		self.dataset.is_some()
 	}
 }
