@@ -8,7 +8,7 @@ use edge::tcam_interface::{
 		values::ConValueIntegerType,
 	},
 };
-use eframe::egui::{self, TextBuffer as _};
+use eframe::egui;
 
 use crate::{
 	camera_controls::ControlManager,
@@ -135,17 +135,18 @@ impl UserInterface {
 				laser_intensity_input,
 			),
 		];
+
 		let res = input_grid_const("subset", entries, ui);
+
 		let trigger = res.iter().any(eframe::egui::Response::lost_focus);
 		let none_empty = !camera_position_input.is_empty()
 			&& !laser_intensity_input.is_empty();
+
 		(trigger && none_empty).then(|| {
 			let subset = Subset::new(
 				camera_position_input.clone(),
 				laser_intensity_input.clone(),
 			);
-			camera_position_input.replace_with("");
-			laser_intensity_input.replace_with("");
 			subset
 		})
 	}
