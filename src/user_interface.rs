@@ -17,6 +17,12 @@ use crate::{
 		input_grid_parsed_const,
 	},
 	settings::{
+		CONTROLS_MAX_WIDTH, CONTROLS_MIN_WIDTH, DISPLAY_MIN_HEIGHT,
+		DISPLAY_MIN_WIDTH, EXPANDED_MAX_HEIGHT, EXPANDED_MAX_WIDTH,
+		EXPANDED_MIN_HEIGHT, EXPANDED_MIN_WIDTH, FRAME_INNER_MARGIN,
+		FRAME_STROKE_GREY, FRAME_STROKE_WIDTH,
+	},
+	settings::{
 		HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE,
 		SUBHEADING_FONT_SIZE, SUBHEADING_FONT_SPACING,
 	},
@@ -38,13 +44,22 @@ impl UserInterface {
 		ui.separator();
 	}
 
-	pub fn add_subheading(ui: &mut egui::Ui, text: &str) {
+	pub fn add_subsection<F, R>(
+		ui: &mut egui::Ui,
+		subtitle: &str,
+		add_contents: F,
+	) -> egui::collapsing_header::CollapsingResponse<R>
+	where
+		F: FnOnce(&mut egui::Ui) -> R,
+	{
 		ui.add_space(5.0);
-		ui.label(
-			egui::RichText::new(text)
-				.size(SUBHEADING_FONT_SIZE)
-				.extra_letter_spacing(SUBHEADING_FONT_SPACING),
-		);
+		let rich_text = egui::RichText::new(subtitle)
+			.size(SUBHEADING_FONT_SIZE)
+			.extra_letter_spacing(SUBHEADING_FONT_SPACING);
+		egui::CollapsingHeader::new(rich_text)
+			.default_open(true)
+			.icon(|_, _, _| return)
+			.show(ui, add_contents)
 	}
 
 	/// First option is whether the menu is open.
@@ -254,7 +269,7 @@ impl UserInterface {
 			})
 			.collect();
 
-		res.iter().any(std::option::Option::is_some).then_some(res)
+		res.iter().any(Option::is_some).then_some(res)
 	}
 
 	pub fn save_button(ui: &mut egui::Ui, enabled: bool) -> bool {
@@ -265,5 +280,117 @@ impl UserInterface {
 
 	pub fn draw_collecting(ui: &mut egui::Ui, progress: &str) {
 		ui.label(progress);
+	}
+
+	pub fn display_panel<F, R>(
+		ui: &mut egui::Ui,
+		add_contents: F,
+	) -> egui::InnerResponse<R>
+	where
+		F: FnOnce(&mut egui::Ui) -> R,
+	{
+		let frame = UserInterface::create_frame(ui);
+		egui::CentralPanel::default_margins()
+			.frame(frame)
+			.show(ui, add_contents)
+	}
+
+	pub fn control_panel_normal<F, R>(
+		ui: &mut egui::Ui,
+		add_contents: F,
+	) -> egui::InnerResponse<R>
+	where
+		F: FnOnce(&mut egui::Ui) -> R,
+	{
+		let frame = UserInterface::create_frame(ui);
+		egui::CentralPanel::default_margins()
+			.frame(frame)
+			.show(ui, |ui| {
+				UserInterface::control_panel_contents(ui, add_contents).inner
+			})
+	}
+
+	pub fn control_panel_expanded<F, R>(
+		ui: &mut egui::Ui,
+		add_contents: F,
+	) -> egui::InnerResponse<R>
+	where
+		F: FnOnce(&mut egui::Ui) -> R,
+	{
+		let frame = UserInterface::create_frame(ui);
+		egui::Panel::left("controls")
+			.resizable(true)
+			.min_size(CONTROLS_MIN_WIDTH)
+			.max_size(CONTROLS_MAX_WIDTH)
+			.frame(frame)
+			.show(ui, |ui| {
+				UserInterface::control_panel_contents(ui, add_contents).inner
+			})
+	}
+
+	fn create_frame(ui: &mut egui::Ui) -> egui::Frame {
+		let fill = ui.style().visuals.panel_fill;
+		let grey = egui::Color32::from_gray(FRAME_STROKE_GREY);
+		let stroke = egui::Stroke::new(FRAME_STROKE_WIDTH, grey);
+		egui::Frame::new()
+			.inner_margin(FRAME_INNER_MARGIN)
+			.fill(fill)
+			.stroke(stroke)
+	}
+
+	fn control_panel_contents<F, R>(
+		ui: &mut egui::Ui,
+		add_contents: F,
+	) -> egui::scroll_area::ScrollAreaOutput<R>
+	where
+		F: FnOnce(&mut egui::Ui) -> R,
+	{
+		ui.style_mut().spacing.scroll = egui::style::ScrollStyle::solid();
+		egui::ScrollArea::vertical().show(ui, add_contents)
+	}
+
+	#[expect(
+		clippy::cast_precision_loss,
+		reason = "The window dimensions will never get big enough to matter"
+	)]
+	pub fn adjust_viewport_expanded(ui: &mut egui::Ui) {
+		// TODO: Clamp to current control width + image width.
+		UserInterface::set_viewport_min_max(
+			ui,
+			[EXPANDED_MIN_WIDTH, EXPANDED_MIN_HEIGHT],
+			[EXPANDED_MAX_WIDTH, EXPANDED_MAX_HEIGHT],
+		);
+		let new_width = ui.viewport_rect().width() + DISPLAY_MIN_WIDTH as f32;
+		UserInterface::set_viewport_size(
+			ui,
+			[new_width, ui.viewport_rect().height()],
+		);
+	}
+
+	pub fn adjust_viewport_condensed(ui: &mut egui::Ui) {
+		UserInterface::set_viewport_min_max(
+			ui,
+			[CONTROLS_MIN_WIDTH, DISPLAY_MIN_HEIGHT],
+			[CONTROLS_MAX_WIDTH, 0.0],
+		);
+		let new_width = ui.viewport_rect().width() - DISPLAY_MIN_WIDTH as f32;
+		let new_width = new_width.clamp(CONTROLS_MIN_WIDTH, CONTROLS_MAX_WIDTH);
+		UserInterface::set_viewport_size(
+			ui,
+			[new_width, ui.viewport_rect().height()],
+		);
+	}
+
+	fn set_viewport_min_max(
+		ui: &mut egui::Ui,
+		min: impl Into<egui::Vec2>,
+		max: impl Into<egui::Vec2>,
+	) {
+		ui.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min.into()));
+		ui.send_viewport_cmd(egui::ViewportCommand::MaxInnerSize(max.into()));
+	}
+
+	fn set_viewport_size(ui: &mut egui::Ui, size: impl Into<egui::Vec2>) {
+		ui.send_viewport_cmd(egui::ViewportCommand::InnerSize(size.into()));
 	}
 }
