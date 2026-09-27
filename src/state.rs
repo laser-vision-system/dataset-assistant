@@ -253,14 +253,20 @@ impl State {
 /// State changers.
 impl State {
 	pub fn try_to_collecting(&mut self) {
-		let path = self.dataset.as_mut().unwrap().try_create_path();
+		let Some(dataset) = self.dataset.as_mut() else {
+			eprintln!("Attempted to collect with no dataset!");
+			return;
+		};
+		let path = dataset.try_create_path();
 		match path {
 			Ok(path) => {
 				let control_sweeps = build_control_sweeps(&self.controls);
 				let saving = Saving::new(path, control_sweeps);
 				self.stage = Stage::Collecting(saving);
 			},
-			Err(why) => eprintln!("Error saving: {why}"),
+			Err(why) => {
+				eprintln!("Failed to create path for collecting: {why}");
+			},
 		}
 	}
 }

@@ -83,6 +83,7 @@ impl Dataset {
 		};
 		let output_folder = subset.build_full_path_on(self.root.clone());
 		fs::create_dir_all(&output_folder)?;
+		self.is_empty = false;
 		Ok(output_folder)
 	}
 
