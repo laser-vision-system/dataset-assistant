@@ -1,3 +1,11 @@
+//! A subset within a dataset is a combination of the position and intensity.
+//!
+//! Necessary because you cannot set the laser intensity path without the
+//! camera position path.
+//!
+//! Each subset is unique, so a new one cannot be created with the same values
+//! as one that already exists.
+
 use std::{fmt::Display, path::PathBuf};
 
 #[derive(Clone, Debug, Default)]
@@ -22,7 +30,7 @@ impl Subset {
 		&self.laser_intensity
 	}
 
-	pub fn get_full_path(&self, mut root: PathBuf) -> PathBuf {
+	pub fn build_full_path_on(&self, mut root: PathBuf) -> PathBuf {
 		root.push(self.camera_position());
 		root.push(self.laser_intensity());
 		root

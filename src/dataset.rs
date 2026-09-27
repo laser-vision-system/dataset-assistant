@@ -19,8 +19,6 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use eframe::egui::TextBuffer as _;
-
 use super::subset::Subset;
 
 /// Query a path for availablility information.
@@ -47,38 +45,43 @@ fn is_path_available(path: &Path) -> io::Result<()> {
 #[derive(Clone, Debug, Default)]
 pub struct Dataset {
 	root: PathBuf,
+
+	/// Whether the root directory has anything inside it.
 	is_empty: bool,
+
+	/// A unique subset of the dataset.
+	/// Is validated when set.
 	subset: Option<Subset>,
 }
 
 impl Dataset {
-	fn new(path: PathBuf, is_empty: bool) -> Self {
+	fn new(root: PathBuf, is_empty: bool) -> Self {
 		Self {
-			root: path,
+			root,
 			is_empty,
-			subset: None,
+			..Default::default()
 		}
 	}
 
-	pub fn add_subset(&mut self, subset: Subset, label: &mut String) {
-		let temp = subset.get_full_path(self.root.clone());
-		self.subset = match is_path_available(&temp) {
+	pub fn add_subset(&mut self, subset: Subset) -> std::io::Result<()> {
+		let temp = subset.build_full_path_on(self.root.clone());
+		match is_path_available(&temp) {
 			Ok(()) => {
-				label.replace_with(&format!("Subset: {subset}"));
-				Some(subset)
+				self.subset = Some(subset);
+				Ok(())
 			},
 			Err(why) => {
-				label.replace_with(&format!("Failed to select subset: {why}"));
-				None
+				self.subset = None;
+				Err(why)
 			},
 		}
 	}
 
 	pub fn try_create_path(&mut self) -> io::Result<PathBuf> {
 		let Some(subset) = self.subset.take() else {
-			return Err(io::Error::other("subset has not been created"));
+			return Err(io::Error::other("Subset has not been created"));
 		};
-		let output_folder = subset.get_full_path(self.root.clone());
+		let output_folder = subset.build_full_path_on(self.root.clone());
 		fs::create_dir_all(&output_folder)?;
 		Ok(output_folder)
 	}
@@ -87,7 +90,7 @@ impl Dataset {
 		self.is_empty
 	}
 
-	pub fn is_subset(&self) -> bool {
+	pub fn subset_ready(&self) -> bool {
 		self.subset.is_some()
 	}
 

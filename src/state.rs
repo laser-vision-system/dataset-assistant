@@ -137,7 +137,7 @@ impl State {
 	pub fn is_complete(&self) -> bool {
 		if self.camera.is_some()
 			&& let Some(dataset) = self.dataset.as_ref()
-			&& dataset.is_subset()
+			&& dataset.subset_ready()
 		{
 			true
 		} else {
@@ -157,10 +157,17 @@ impl State {
 /// Setters.
 impl State {
 	pub fn try_add_subset(&mut self, subset: Subset) {
-		self.dataset
-			.as_mut()
-			.unwrap()
-			.add_subset(subset, &mut self.subset_path_label);
+		let result = self.dataset.as_mut().unwrap().add_subset(subset.clone());
+		match result {
+			Ok(()) => {
+				self.subset_path_label
+					.replace_with(&format!("Subset: {subset}"));
+			},
+			Err(why) => {
+				self.subset_path_label
+					.replace_with(&format!("Failed to select subset: {why}"));
+			},
+		}
 	}
 
 	fn add_camera(&mut self, index: u32) {
