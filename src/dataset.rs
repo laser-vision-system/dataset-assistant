@@ -102,7 +102,7 @@ impl Dataset {
 
 impl Display for Dataset {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}/", self.root.display())
+		write!(f, "{}", self.root.display())
 	}
 }
 
