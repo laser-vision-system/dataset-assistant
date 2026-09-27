@@ -19,6 +19,8 @@ use crate::{
 	saving::Saving,
 	settings::{
 		DEFAULT_CAMERA_LABEL, DEFAULT_PATH_LABEL, DEFAULT_SUBSET_LABEL,
+		DIRECTORY_SELECTED_LABEL, FAILED_DIRECTORY_LABEL,
+		NON_EMPTY_DIRECTORY_SELECTED_LABEL,
 	},
 	subset::Subset,
 };
@@ -363,7 +365,27 @@ impl State {
 		self.file_dialog.update(ui);
 
 		if let Some(path) = self.file_dialog.take_picked() {
-			self.dataset = Dataset::try_new(path, &mut self.dataset_path_label);
+			let maybe_dataset = Dataset::try_from(path);
+			match maybe_dataset {
+				Ok(dataset) => {
+					let new_label = if dataset.is_empty() {
+						format!("{}: {}/", DIRECTORY_SELECTED_LABEL, dataset)
+					} else {
+						format!(
+							"{}: {}/",
+							NON_EMPTY_DIRECTORY_SELECTED_LABEL, dataset
+						)
+					};
+					self.dataset_path_label.replace_with(&new_label);
+					self.dataset = Some(dataset);
+				},
+				Err(why) => {
+					//
+					self.dataset_path_label.replace_with(&format!(
+						"{FAILED_DIRECTORY_LABEL}: {why}"
+					));
+				},
+			}
 		}
 	}
 }

@@ -7,10 +7,6 @@ use std::{
 use eframe::egui::TextBuffer as _;
 
 use super::subset::Subset;
-use crate::settings::{
-	DIRECTORY_SELECTED_LABEL, FAILED_DIRECTORY_LABEL,
-	NON_EMPTY_DIRECTORY_SELECTED_LABEL,
-};
 
 /// Query a path for availablility information.
 fn is_path_available(path: &Path) -> io::Result<()> {
@@ -36,46 +32,16 @@ fn is_path_available(path: &Path) -> io::Result<()> {
 #[derive(Clone, Debug, Default)]
 pub struct Dataset {
 	root: PathBuf,
+	is_empty: bool,
 	subset: Option<Subset>,
 }
 
 impl Dataset {
-	fn new(path: PathBuf) -> Self {
+	fn new(path: PathBuf, is_empty: bool) -> Self {
 		Self {
 			root: path,
+			is_empty,
 			subset: None,
-		}
-	}
-
-	/// Try to create a new dataset object from a provided [`PathBuf`].
-	///
-	/// The path must be a directory.
-	///
-	/// Details about the selected directory will be placed into the `label`
-	/// parameter.
-	pub fn try_new(path: PathBuf, label: &mut String) -> Option<Self> {
-		match is_path_available(&path) {
-			Ok(()) => {
-				label.replace_with(&format!(
-					"{}: {}/",
-					DIRECTORY_SELECTED_LABEL,
-					path.display()
-				));
-				Some(Self::new(path))
-			},
-			// The root path is allow to contain files or subdirectories.
-			Err(why) if why.kind() == io::ErrorKind::DirectoryNotEmpty => {
-				label.replace_with(&format!(
-					"{}: {}/",
-					NON_EMPTY_DIRECTORY_SELECTED_LABEL,
-					path.display()
-				));
-				Some(Self::new(path))
-			},
-			Err(why) => {
-				label.replace_with(&format!("{FAILED_DIRECTORY_LABEL}: {why}"));
-				None
-			},
 		}
 	}
 
@@ -102,6 +68,10 @@ impl Dataset {
 		Ok(output_folder)
 	}
 
+	pub fn is_empty(&self) -> bool {
+		self.is_empty
+	}
+
 	pub fn is_subset(&self) -> bool {
 		self.subset.is_some()
 	}
@@ -114,6 +84,24 @@ impl Dataset {
 impl Display for Dataset {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}/", self.root.display())
+	}
+}
+
+impl TryFrom<PathBuf> for Dataset {
+	type Error = std::io::Error;
+
+	/// Try to create a new dataset object from a provided [`PathBuf`].
+	///
+	/// The path must be a directory.
+	fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
+		match is_path_available(&path) {
+			Ok(()) => Ok(Self::new(path, true)),
+			// The root path is allow to contain files or subdirectories.
+			Err(why) if why.kind() == io::ErrorKind::DirectoryNotEmpty => {
+				Ok(Self::new(path, false))
+			},
+			Err(why) => Err(why),
+		}
 	}
 }
 
@@ -146,8 +134,7 @@ mod tests {
 	#[test]
 	fn dataset_try_new() {
 		let path = Path::new("./temp/dataset");
-		let mut label = String::new();
-		let ds = Dataset::try_new(path.to_path_buf(), &mut label);
+		let ds = Dataset::try_from(path.to_path_buf());
 		assert_eq!(ds.unwrap().root, path.to_path_buf());
 	}
 
