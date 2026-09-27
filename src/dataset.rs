@@ -1,3 +1,18 @@
+//! The local filesystem path where the dataset is stored.
+//!
+//! The dataset primarily consists of a root directory. The root directory
+//! should remain fixed for the duration of the collection process. The actual
+//! location that the images will be stored at will vary by a position and
+//! intensity, represented as nested subfolders of the root directory.
+//!
+//! The [`Dataset`] should never be consumed. Clearing the position after
+//! running the collection procedure is inconvenient. Clearing the intensity
+//! is also unnecessary.
+//!
+//! It would be nice to use [`std::fs::Dir`], but it is current
+//! experimental-only. If anyone is working on this in the future, consider
+//! refactoring to use it.
+
 use std::{
 	fmt::Display,
 	fs, io,
