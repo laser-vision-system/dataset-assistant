@@ -3,8 +3,9 @@ use eframe::egui;
 use crate::{
 	capture::Capture,
 	settings::{
-		CONTROLS_WIDTH_MAX, CONTROLS_WIDTH_MIN, TEXTURE_WIDTH, WINDOW_HEIGHT,
-		WINDOW_WIDTH,
+		CONTROLS_MAX_WIDTH, CONTROLS_MIN_WIDTH, DISPLAY_MIN_HEIGHT,
+		DISPLAY_MIN_WIDTH, EXPANDED_MAX_HEIGHT, EXPANDED_MAX_WIDTH,
+		EXPANDED_MIN_HEIGHT, EXPANDED_MIN_WIDTH,
 	},
 	state::State,
 	user_interface::UserInterface,
@@ -162,38 +163,47 @@ impl eframe::App for DatasetAssistantApp {
 	fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
 		let show_display = self.state.get_show_display();
 
-		if show_display {
-			display_panel(ui).show(ui, |ui| {
+		let requested_capture = if show_display {
+			let requested_capture =
+				control_panel_expanded(ui, |ui| self.show_controls(ui)).inner;
+
+			display_panel(ui, |ui| {
 				self.capture.display_image(ui);
 			});
-		}
 
-		let requested_capture =
-			control_panel(ui, |ui| self.show_controls(ui)).inner;
+			requested_capture
+		} else {
+			control_panel_normal(ui, |ui| self.show_controls(ui)).inner
+		};
 
 		self.update(ui, requested_capture);
 
 		let new_show_display = self.state.get_show_display();
 		if show_display != new_show_display {
 			if new_show_display {
-				when_display(ui);
+				adjust_viewport_expanded(ui);
 			} else {
-				when_no_display(ui);
+				adjust_viewport_condensed(ui);
 			}
 		}
 	}
 }
 
-fn display_panel(ui: &mut egui::Ui) -> egui::Panel {
+fn display_panel<F, R>(
+	ui: &mut egui::Ui,
+	add_contents: F,
+) -> egui::InnerResponse<R>
+where
+	F: FnOnce(&mut egui::Ui) -> R,
+{
 	let fill = ui.style().visuals.panel_fill;
 	let frame = egui::Frame::new().inner_margin(0).fill(fill);
-	egui::Panel::right("display")
+	egui::CentralPanel::default_margins()
 		.frame(frame)
-		.resizable(false)
-		.min_size(TEXTURE_WIDTH as f32)
+		.show(ui, add_contents)
 }
 
-fn control_panel<F, R>(
+fn control_panel_normal<F, R>(
 	ui: &mut egui::Ui,
 	add_contents: F,
 ) -> egui::InnerResponse<R>
@@ -207,21 +217,54 @@ where
 	})
 }
 
-fn when_display(ui: &mut egui::Ui) {
-	set_viewport_bounds(ui, [WINDOW_WIDTH, WINDOW_HEIGHT], [0.0, 0.0]);
-	set_viewport_size(ui, [WINDOW_WIDTH, ui.viewport_rect().height()]);
+fn control_panel_expanded<F, R>(
+	ui: &mut egui::Ui,
+	add_contents: F,
+) -> egui::InnerResponse<R>
+where
+	F: FnOnce(&mut egui::Ui) -> R,
+{
+	let min_width = CONTROLS_MIN_WIDTH;
+	let max_width = CONTROLS_MAX_WIDTH;
+	let control_panel = egui::Panel::left("controls")
+		.resizable(true)
+		.min_size(min_width)
+		.max_size(max_width);
+
+	control_panel.show(ui, |ui| {
+		ui.style_mut().spacing.scroll = egui::style::ScrollStyle::solid();
+
+		egui::ScrollArea::vertical().show(ui, add_contents).inner
+	})
 }
 
-fn when_no_display(ui: &mut egui::Ui) {
-	set_viewport_bounds(
+#[expect(
+	clippy::cast_precision_loss,
+	reason = "The window dimensions will never get big enough to matter"
+)]
+fn adjust_viewport_expanded(ui: &mut egui::Ui) {
+	// TODO: Clamp to current control width + image width.
+	set_viewport_min_max(
 		ui,
-		[CONTROLS_WIDTH_MIN, WINDOW_HEIGHT],
-		[CONTROLS_WIDTH_MAX, 0.0],
+		[EXPANDED_MIN_WIDTH, EXPANDED_MIN_HEIGHT],
+		[EXPANDED_MAX_WIDTH, EXPANDED_MAX_HEIGHT],
 	);
-	set_viewport_size(ui, [CONTROLS_WIDTH_MAX, ui.viewport_rect().height()]);
+	let new_width = ui.viewport_rect().width() + DISPLAY_MIN_WIDTH as f32;
+	set_viewport_size(ui, [new_width, ui.viewport_rect().height()]);
 }
 
-fn set_viewport_bounds(
+fn adjust_viewport_condensed(ui: &mut egui::Ui) {
+	set_viewport_min_max(
+		ui,
+		[CONTROLS_MIN_WIDTH, DISPLAY_MIN_HEIGHT],
+		[CONTROLS_MAX_WIDTH, 0.0],
+	);
+	let new_width = ui.viewport_rect().width() - DISPLAY_MIN_WIDTH as f32;
+	let new_width = new_width.clamp(CONTROLS_MIN_WIDTH, CONTROLS_MAX_WIDTH);
+	set_viewport_size(ui, [new_width, ui.viewport_rect().height()]);
+}
+
+fn set_viewport_min_max(
 	ui: &mut egui::Ui,
 	min: impl Into<egui::Vec2>,
 	max: impl Into<egui::Vec2>,

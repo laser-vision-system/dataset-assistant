@@ -107,7 +107,10 @@ mod user_interface;
 
 use self::{
 	application::DatasetAssistantApp,
-	settings::{CONTROLS_WIDTH_MAX, CONTROLS_WIDTH_MIN, WINDOW_HEIGHT},
+	settings::{
+		DEFAULT_HEIGHT, DEFAULT_MAX_HEIGHT, DEFAULT_MAX_WIDTH,
+		DEFAULT_MIN_HEIGHT, DEFAULT_MIN_WIDTH, DEFAULT_WIDTH,
+	},
 };
 
 fn main() -> eframe::Result {
@@ -124,9 +127,9 @@ fn main() -> eframe::Result {
 		event_loop_builder,
 		renderer: Renderer::Glow,
 		viewport: ViewportBuilder::default()
-			.with_inner_size([CONTROLS_WIDTH_MIN, WINDOW_HEIGHT])
-			.with_min_inner_size([CONTROLS_WIDTH_MIN, WINDOW_HEIGHT])
-			.with_max_inner_size([CONTROLS_WIDTH_MAX, 0.0]),
+			.with_inner_size([DEFAULT_WIDTH, DEFAULT_HEIGHT])
+			.with_min_inner_size([DEFAULT_MIN_WIDTH, DEFAULT_MIN_HEIGHT])
+			.with_max_inner_size([DEFAULT_MAX_WIDTH, DEFAULT_MAX_HEIGHT]),
 		..NativeOptions::default()
 	};
 
