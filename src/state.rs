@@ -157,17 +157,19 @@ impl State {
 /// Setters.
 impl State {
 	pub fn try_add_subset(&mut self, subset: Subset) {
-		let result = self.dataset.as_mut().unwrap().add_subset(subset.clone());
-		match result {
+		let Some(dataset) = self.dataset.as_mut() else {
+			eprintln!("Attempted to add subset with no dataset!");
+			return;
+		};
+		let subset_label = match dataset.add_subset(subset.clone()) {
 			Ok(()) => {
-				self.subset_path_label
-					.replace_with(&format!("Subset: {subset}"));
+				format!("Subset: {subset}")
 			},
 			Err(why) => {
-				self.subset_path_label
-					.replace_with(&format!("Failed to select subset: {why}"));
+				format!("Failed to select subset: {why}")
 			},
-		}
+		};
+		self.subset_path_label.replace_with(&subset_label);
 	}
 
 	fn add_camera(&mut self, index: u32) {
