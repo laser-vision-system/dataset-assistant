@@ -135,22 +135,21 @@ impl State {
 	}
 
 	pub fn is_complete(&self) -> bool {
-		if self.camera.is_some()
-			&& let Some(dataset) = self.dataset.as_ref()
-			&& dataset.subset_ready()
-		{
-			true
-		} else {
-			false
-		}
+		self.camera_ready() && self.subset_ready()
 	}
 
-	pub fn is_camera(&self) -> bool {
+	pub fn camera_ready(&self) -> bool {
 		self.camera.is_some()
 	}
 
-	pub fn is_dataset(&self) -> bool {
+	pub fn dataset_ready(&self) -> bool {
 		self.dataset.is_some()
+	}
+
+	pub fn subset_ready(&self) -> bool {
+		self.dataset
+			.as_ref()
+			.is_some_and(|inner| inner.subset_ready())
 	}
 }
 

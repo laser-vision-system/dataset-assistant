@@ -79,14 +79,8 @@ impl DatasetAssistantApp {
 
 				ui.separator();
 
-				ui.label(self.state.get_subset_path_label());
-				ui.add_enabled_ui(self.state.is_dataset(), |ui| {
-					if let Some(selection) =
-						UserInterface::build_csv_selection(ui)
-					{
-						self.state.set_should_build_csv(selection);
-					}
-
+				ui.add_enabled_ui(self.state.dataset_ready(), |ui| {
+					ui.label(self.state.get_subset_path_label());
 					let (camera_position_input, laser_intensity_input) =
 						self.state.get_subset_inputs();
 					if let Some(subset) =
@@ -97,6 +91,14 @@ impl DatasetAssistantApp {
 						) {
 						self.state.try_add_subset(subset);
 					}
+
+					ui.add_enabled_ui(self.state.subset_ready(), |ui| {
+						if let Some(selection) =
+							UserInterface::build_csv_selection(ui)
+						{
+							self.state.set_should_build_csv(selection);
+						}
+					});
 				});
 			});
 		});
@@ -117,7 +119,7 @@ impl DatasetAssistantApp {
 			ui.separator();
 
 			let requested_capture = ui
-				.add_enabled_ui(self.state.is_camera(), |ui| {
+				.add_enabled_ui(self.state.camera_ready(), |ui| {
 					UserInterface::capture_controls(
 						ui,
 						self.state.get_live_feed_mut(),
@@ -125,7 +127,7 @@ impl DatasetAssistantApp {
 				})
 				.inner;
 
-			if self.state.is_camera() {
+			if self.state.camera_ready() {
 				ui.collapsing("Controls:", |ui| {
 					let mut controls = self.state.get_controls();
 					let requested_controls =
