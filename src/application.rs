@@ -1,6 +1,6 @@
 use eframe::egui;
 
-use crate::{capture::Capture, state::State, user_interface::UserInterface};
+use crate::{capture::Capture, state::State, user_interface};
 
 /// The central egui application.
 pub struct DatasetAssistantApp {
@@ -17,7 +17,7 @@ impl DatasetAssistantApp {
 	}
 
 	fn show_controls(&mut self, ui: &mut egui::Ui) -> bool {
-		UserInterface::add_heading(ui);
+		user_interface::add_heading(ui);
 
 		ui.spacing_mut().indent_ends_with_horizontal_line = true;
 
@@ -34,11 +34,11 @@ impl DatasetAssistantApp {
 	}
 
 	fn directory_section(&mut self, ui: &mut egui::Ui) {
-		UserInterface::add_subsection(ui, "Directory", |ui| {
+		user_interface::add_subsection(ui, "Directory", |ui| {
 			ui.add_enabled_ui(!self.state.get_live_feed(), |ui| {
 				ui.label(self.state.get_dataset_path_label());
 				self.state
-					.set_chose_folder(UserInterface::choose_folder(ui));
+					.set_chose_folder(user_interface::choose_folder(ui));
 
 				ui.separator();
 
@@ -47,7 +47,7 @@ impl DatasetAssistantApp {
 					let (camera_position_input, laser_intensity_input) =
 						self.state.get_subset_inputs();
 					if let Some(subset) =
-						UserInterface::display_subset_entry_grid(
+						user_interface::display_subset_entry_grid(
 							ui,
 							camera_position_input,
 							laser_intensity_input,
@@ -57,7 +57,7 @@ impl DatasetAssistantApp {
 
 					ui.add_enabled_ui(self.state.subset_ready(), |ui| {
 						if let Some(selection) =
-							UserInterface::build_csv_selection(ui)
+							user_interface::build_csv_selection(ui)
 						{
 							self.state.set_should_build_csv(selection);
 						}
@@ -68,9 +68,9 @@ impl DatasetAssistantApp {
 	}
 
 	fn camera_section(&mut self, ui: &mut egui::Ui) -> bool {
-		UserInterface::add_subsection(ui, "Camera", |ui| {
+		user_interface::add_subsection(ui, "Camera", |ui| {
 			ui.add_enabled_ui(!self.state.get_live_feed(), |ui| {
-				if let Some(selection) = UserInterface::camera_selection(
+				if let Some(selection) = user_interface::camera_selection(
 					ui,
 					self.state.get_camera_id_label(),
 				) {
@@ -86,7 +86,7 @@ impl DatasetAssistantApp {
 						self.state.get_show_display_mut(),
 						"Show display panel",
 					);
-					UserInterface::capture_controls(
+					user_interface::capture_controls(
 						ui,
 						self.state.get_live_feed_mut(),
 					)
@@ -103,7 +103,7 @@ impl DatasetAssistantApp {
 						egui::CollapsingHeader::new("Controls:")
 							.default_open(false)
 							.show(ui, |ui| {
-								UserInterface::draw_controls(ui, &mut controls)
+								user_interface::draw_controls(ui, &mut controls)
 							})
 							.body_returned;
 					self.state
@@ -122,7 +122,7 @@ impl DatasetAssistantApp {
 			ui.add_enabled_ui(
 				self.state.current_state_is_preparation(),
 				|ui| {
-					if UserInterface::save_button(ui, self.state.is_complete())
+					if user_interface::save_button(ui, self.state.is_complete())
 					{
 						self.state.try_to_collecting();
 					}
@@ -130,7 +130,7 @@ impl DatasetAssistantApp {
 			);
 
 			ui.add_enabled_ui(self.state.current_state_is_collecting(), |ui| {
-				UserInterface::draw_collecting(
+				user_interface::draw_collecting(
 					ui,
 					self.state.get_saving_progress(),
 				);
@@ -164,19 +164,21 @@ impl eframe::App for DatasetAssistantApp {
 
 		let requested_capture = if show_display {
 			let requested_capture =
-				UserInterface::control_panel_expanded(ui, |ui| {
+				user_interface::control_panel_expanded(ui, |ui| {
 					self.show_controls(ui)
 				})
 				.inner;
 
-			UserInterface::display_panel(ui, |ui| {
+			user_interface::display_panel(ui, |ui| {
 				self.capture.display_image(ui);
 			});
 
 			requested_capture
 		} else {
-			UserInterface::control_panel_normal(ui, |ui| self.show_controls(ui))
-				.inner
+			user_interface::control_panel_normal(ui, |ui| {
+				self.show_controls(ui)
+			})
+			.inner
 		};
 
 		self.update(ui, requested_capture);
@@ -184,9 +186,9 @@ impl eframe::App for DatasetAssistantApp {
 		let new_show_display = self.state.get_show_display();
 		if show_display != new_show_display {
 			if new_show_display {
-				UserInterface::adjust_viewport_expanded(ui);
+				user_interface::adjust_viewport_expanded(ui);
 			} else {
-				UserInterface::adjust_viewport_condensed(ui);
+				user_interface::adjust_viewport_condensed(ui);
 			}
 		}
 	}
