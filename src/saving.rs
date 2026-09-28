@@ -57,23 +57,24 @@ impl Saving {
 	) -> Finished {
 		let mut val_strs =
 			ValueStrings::with_capacity(self.control_sweeps.len() + 1);
+
+		if let Some(external_intensity) = self.external_intensity {
+			let value_string = external_intensity.to_string();
+			writeln!(
+				val_strs.details,
+				"externalLaserIntensity: {value_string}"
+			)
+			.expect("Writing into the value strings should never fail");
+			write!(val_strs.short, "_{value_string}")
+				.expect("Writing into the value strings should never fail");
+		}
+
 		for sweep in &mut self.control_sweeps {
 			sweep.apply_current(camera);
 			writeln!(val_strs.details, "{sweep}")
 				.expect("Writing into the value strings should never fail");
 			let value = sweep.to_control_type_value().get_value().to_string();
 			write!(val_strs.short, "_{value}")
-				.expect("Writing into the value strings should never fail");
-		}
-
-		if let Some(external_intensity) = self.external_intensity {
-			let value_string = external_intensity.to_string();
-			writeln!(
-				val_strs.details,
-				"ExternalLaserIntensity: {value_string}"
-			)
-			.expect("Writing into the value strings should never fail");
-			write!(val_strs.short, "_{value_string}")
 				.expect("Writing into the value strings should never fail");
 		}
 
