@@ -1,5 +1,7 @@
 //! The information and controls shown to the user.
 
+pub mod external_laser;
+
 use edge::tcam_interface::{
 	CameraDevice,
 	controls::{
@@ -22,14 +24,26 @@ use crate::{
 		CONTROLS_MAX_WIDTH, CONTROLS_MIN_WIDTH, DISPLAY_MIN_HEIGHT,
 		DISPLAY_MIN_WIDTH, EXPANDED_MAX_HEIGHT, EXPANDED_MAX_WIDTH,
 		EXPANDED_MIN_HEIGHT, EXPANDED_MIN_WIDTH, FRAME_INNER_MARGIN,
-		FRAME_STROKE_GREY, FRAME_STROKE_WIDTH,
-	},
-	settings::{
-		HEADING_FONT_SIZE, HEADING_FONT_SPACING, PREHEADING_SPACE,
-		SUBHEADING_FONT_SIZE, SUBHEADING_FONT_SPACING,
+		FRAME_STROKE_GREY, FRAME_STROKE_WIDTH, HEADING_FONT_SIZE,
+		HEADING_FONT_SPACING, PREHEADING_SPACE, SUBHEADING_FONT_SIZE,
+		SUBHEADING_FONT_SPACING,
 	},
 	subset::Subset,
 };
+
+use self::external_laser::ExternalLaser;
+
+#[derive(Debug, Default)]
+pub struct UIComponents {
+	external_laser: ExternalLaser,
+}
+
+impl UIComponents {
+	pub fn query_external_laser(&mut self, ui: &mut egui::Ui) -> Option<f32> {
+		self.external_laser.external_intensity_entry(ui);
+		self.external_laser.get_value()
+	}
+}
 
 pub fn add_heading(ui: &mut egui::Ui) {
 	ui.add_space(PREHEADING_SPACE);

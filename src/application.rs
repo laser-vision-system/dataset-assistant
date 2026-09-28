@@ -1,18 +1,25 @@
 use eframe::egui;
 
-use crate::{capture::Capture, state::State, user_interface};
+use crate::{
+	capture::Capture,
+	state::State,
+	user_interface::{self, UIComponents},
+};
 
 /// The central egui application.
 pub struct DatasetAssistantApp {
 	state: State,
 	capture: Capture,
+	ui: UIComponents,
 }
 
 impl DatasetAssistantApp {
+	// TODO: Do more stuff in the constructor.
 	pub fn new(ctx: &egui::Context) -> Self {
 		Self {
 			state: State::new(),
 			capture: Capture::new(ctx),
+			ui: UIComponents::default(),
 		}
 	}
 
@@ -24,7 +31,9 @@ impl DatasetAssistantApp {
 		let requested_capture = ui
 			.add_enabled_ui(self.state.current_state_is_preparation(), |ui| {
 				self.directory_section(ui);
-				self.camera_section(ui)
+				let res = self.camera_section(ui);
+				self.extra_section(ui);
+				res
 			})
 			.inner;
 
@@ -115,6 +124,10 @@ impl DatasetAssistantApp {
 		})
 		.body_returned
 		.is_some_and(|requested| requested)
+	}
+
+	fn extra_section(&mut self, ui: &mut egui::Ui) {
+		let res = self.ui.query_external_laser(ui);
 	}
 
 	fn save_section(&mut self, ui: &mut egui::Ui) {
