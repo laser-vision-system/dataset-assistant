@@ -70,6 +70,11 @@
 	clippy::expect_used,
 	reason = "This project is allowed to panic when unexpected things happen"
 )]
+#![expect(clippy::result_large_err, reason = "Issue present in external crate")]
+#![cfg_attr(
+	test,
+	expect(clippy::unwrap_used, reason = "Tests are allowed to unwrap")
+)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // Hide console window on Windows in release.
 
 use eframe::{
@@ -79,22 +84,26 @@ use eframe::{
 #[cfg(target_os = "linux")]
 use winit::platform::wayland::EventLoopBuilderExtWayland as _; // Bring into context.
 
-mod settings;
-use settings::{WINDOW_HEIGHT, WINDOW_WIDTH};
-
 mod application;
-use application::DatasetAssistantApp;
-
 mod camera_controls;
 mod capture;
 mod csv_builder;
 mod dataset;
 mod entry;
 mod saving;
+mod settings;
 mod state;
 mod subset;
 mod sweep;
 mod user_interface;
+
+use self::{
+	application::DatasetAssistantApp,
+	settings::{
+		DEFAULT_HEIGHT, DEFAULT_MAX_HEIGHT, DEFAULT_MAX_WIDTH,
+		DEFAULT_MIN_HEIGHT, DEFAULT_MIN_WIDTH, DEFAULT_WIDTH,
+	},
+};
 
 fn main() -> eframe::Result {
 	let event_loop_builder: Option<EventLoopBuilderHook> = cfg_select! {
@@ -110,7 +119,9 @@ fn main() -> eframe::Result {
 		event_loop_builder,
 		renderer: Renderer::Glow,
 		viewport: ViewportBuilder::default()
-			.with_inner_size([WINDOW_WIDTH, WINDOW_HEIGHT]),
+			.with_inner_size([DEFAULT_WIDTH, DEFAULT_HEIGHT])
+			.with_min_inner_size([DEFAULT_MIN_WIDTH, DEFAULT_MIN_HEIGHT])
+			.with_max_inner_size([DEFAULT_MAX_WIDTH, DEFAULT_MAX_HEIGHT]),
 		..NativeOptions::default()
 	};
 

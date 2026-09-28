@@ -1,7 +1,7 @@
 //! A CSV builder of the standard format.
 
 use std::{
-	fs,
+	fmt, fs,
 	path::{Path, PathBuf},
 	thread,
 };
@@ -41,13 +41,70 @@ impl CSVBuilderHandle for Builder {
 	}
 }
 
-type _MetadataList = Vec<MetadataField>;
+type MetadataList = Vec<MetadataField>;
+type IntType = u32;
+type FloatType = f32;
+
+/// Represents the types of values that the metadata field might have.
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+enum FieldType {
+	Int(IntType),
+	Float(FloatType),
+}
+
+impl FieldType {
+	fn try_as_int(value: &str) -> Result<Self> {
+		let int_value = value.parse::<IntType>().map_err(|why| {
+			CSVBuilderError::new(format!(
+				"failed to parse metadata value '{value}' as int: {why}"
+			))
+		})?;
+		Ok(Self::Int(int_value))
+	}
+
+	fn try_as_float(value: &str) -> Result<Self> {
+		let float_value = value.parse::<FloatType>().map_err(|why| {
+			CSVBuilderError::new(format!(
+				"failed to parse metadata value '{value}' as float: {why}"
+			))
+		})?;
+		Ok(Self::Float(float_value))
+	}
+}
+
+impl fmt::Display for FieldType {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Int(int) => int.fmt(f),
+			Self::Float(float) => float.fmt(f),
+		}
+	}
+}
+
+impl TryFrom<&str> for FieldType {
+	type Error = CSVBuilderError;
+
+	fn try_from(value: &str) -> Result<Self> {
+		let maybe_int = Self::try_as_int(value);
+		if let Ok(success) = maybe_int {
+			return Ok(success);
+		}
+		let maybe_float = Self::try_as_float(value);
+		if let Ok(success) = maybe_float {
+			return Ok(success);
+		}
+
+		Err(CSVBuilderError::new(format!(
+			"failed to parse metadata value '{value}'"
+		)))
+	}
+}
 
 /// Represents a parsed metadata key-value pair.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 struct MetadataField {
 	key: String,
-	value: u16,
+	value: FieldType,
 }
 
 /// Contains all extracted information for a single image dataset entry.
@@ -56,7 +113,7 @@ struct DatasetEntry {
 	relative_path: String,
 	position: String,
 	intensity: f32,
-	metadata: _MetadataList,
+	metadata: MetadataList,
 }
 
 /// Main execution pipeline for the CSV builder thread.
@@ -122,9 +179,12 @@ fn parse_intensity(name: &str) -> Result<f32> {
 }
 
 /// Reads and parses a metadata file into a list of fields.
-fn read_metadata(path: &Path) -> Result<_MetadataList> {
+fn read_metadata(path: &Path) -> Result<MetadataList> {
 	let content = fs::read_to_string(path).map_err(|why| {
-		CSVBuilderError::new(format!("failed to read metadata file: {why}"))
+		CSVBuilderError::new(format!(
+			"failed to read metadata file '{}' : {why}",
+			path.display()
+		))
 	})?;
 
 	content
@@ -136,13 +196,16 @@ fn read_metadata(path: &Path) -> Result<_MetadataList> {
 
 /// Parses a single metadata line formatted as `key: value`.
 fn parse_metadata_line(line: &str) -> Result<MetadataField> {
-	let (key, value) = line
-		.split_once(':')
-		.ok_or_else(|| CSVBuilderError::new("invalid metadata line format"))?;
-
-	let parsed_value = value.trim().parse::<u16>().map_err(|why| {
-		CSVBuilderError::new(format!("failed to parse metadata value: {why}"))
+	let (key, value) = line.split_once(':').ok_or_else(|| {
+		CSVBuilderError::new(format!(
+			"invalid metadata line format '{line}', expected 'key: value'"
+		))
 	})?;
+
+	let key = key.trim();
+	let value = value.trim();
+
+	let parsed_value = FieldType::try_from(value)?;
 
 	Ok(MetadataField {
 		key: key.trim().to_owned(),

@@ -32,13 +32,19 @@ impl ValueStrings {
 pub struct Saving {
 	path: PathBuf,
 	control_sweeps: Vec<ControlSweep>,
+	external_intensity: Option<f32>,
 }
 
 impl Saving {
-	pub fn new(path: PathBuf, control_sweeps: Vec<ControlSweep>) -> Self {
+	pub fn new(
+		path: PathBuf,
+		control_sweeps: Vec<ControlSweep>,
+		external_intensity: Option<f32>,
+	) -> Self {
 		Self {
 			path,
 			control_sweeps,
+			external_intensity,
 		}
 	}
 
@@ -50,12 +56,26 @@ impl Saving {
 		progress: &mut String,
 	) -> Finished {
 		let mut val_strs =
-			ValueStrings::with_capacity(self.control_sweeps.len());
+			ValueStrings::with_capacity(self.control_sweeps.len() + 1);
+
+		if let Some(external_intensity) = self.external_intensity {
+			let value_string = external_intensity.to_string();
+			writeln!(
+				val_strs.details,
+				"externalLaserIntensity: {value_string}"
+			)
+			.expect("Writing into the value strings should never fail");
+			write!(val_strs.short, "_{value_string}")
+				.expect("Writing into the value strings should never fail");
+		}
+
 		for sweep in &mut self.control_sweeps {
 			sweep.apply_current(camera);
-			_ = writeln!(val_strs.details, "{sweep}");
+			writeln!(val_strs.details, "{sweep}")
+				.expect("Writing into the value strings should never fail");
 			let value = sweep.to_control_type_value().get_value().to_string();
-			_ = write!(val_strs.short, "_{value}");
+			write!(val_strs.short, "_{value}")
+				.expect("Writing into the value strings should never fail");
 		}
 
 		progress.replace_with(&val_strs.details);
@@ -98,9 +118,9 @@ impl Saving {
 		value_strings: ValueStrings,
 	) {
 		// To address latency, skip 1 frame.
-		camera.get_frame().unwrap();
-		let frame = camera.get_frame().unwrap();
-		let image = camera.decode_image(frame).unwrap();
+		camera.get_frame_buffer().unwrap();
+		let buffer = camera.get_frame_buffer().unwrap();
+		let image = camera.decode_buffer(buffer).unwrap();
 		capture.store_image(&image);
 		let img_filepath = self.path.join(format!(
 			"{}{}.{}",

@@ -2,160 +2,202 @@ use eframe::egui;
 
 use crate::{
 	capture::Capture,
-	settings::{CONTROLS_WIDTH_MAX, CONTROLS_WIDTH_MIN},
 	state::State,
-	user_interface::UserInterface,
+	user_interface::{self, UIComponents},
 };
 
 /// The central egui application.
 pub struct DatasetAssistantApp {
 	state: State,
 	capture: Capture,
+	ui: UIComponents,
 }
 
 impl DatasetAssistantApp {
+	// TODO: Do more stuff in the constructor.
 	pub fn new(ctx: &egui::Context) -> Self {
 		Self {
 			state: State::new(),
 			capture: Capture::new(ctx),
+			ui: UIComponents::default(),
+		}
+	}
+
+	fn show_controls(&mut self, ui: &mut egui::Ui) -> bool {
+		user_interface::add_heading(ui);
+
+		ui.spacing_mut().indent_ends_with_horizontal_line = true;
+
+		let requested_capture = ui
+			.add_enabled_ui(self.state.current_state_is_preparation(), |ui| {
+				self.directory_section(ui);
+				self.camera_section(ui)
+			})
+			.inner;
+
+		self.save_section(ui);
+
+		requested_capture
+	}
+
+	fn directory_section(&mut self, ui: &mut egui::Ui) {
+		user_interface::add_subsection(ui, "Directory", |ui| {
+			ui.add_enabled_ui(!self.state.get_live_feed(), |ui| {
+				ui.label(self.state.get_dataset_path_label());
+				self.state
+					.set_chose_folder(user_interface::choose_folder(ui));
+
+				ui.separator();
+
+				ui.add_enabled_ui(self.state.dataset_not_empty(), |ui| {
+					if let Some(selection) =
+						user_interface::build_csv_selection(ui)
+					{
+						self.state.set_should_build_csv(selection);
+					}
+				});
+
+				ui.add_enabled_ui(self.state.dataset_ready(), |ui| {
+					ui.label(self.state.get_subset_path_label());
+					let (camera_position_input, laser_intensity_input) =
+						self.state.get_subset_inputs();
+					if let Some(subset) =
+						user_interface::display_subset_entry_grid(
+							ui,
+							camera_position_input,
+							laser_intensity_input,
+						) {
+						self.state.try_add_subset(subset);
+					}
+				});
+			});
+		});
+	}
+
+	fn camera_section(&mut self, ui: &mut egui::Ui) -> bool {
+		user_interface::add_subsection(ui, "Camera", |ui| {
+			ui.add_enabled_ui(!self.state.get_live_feed(), |ui| {
+				if let Some(selection) = user_interface::camera_selection(
+					ui,
+					self.state.get_camera_id_label(),
+				) {
+					self.state.set_requested_cam_index(selection);
+				}
+			});
+
+			ui.separator();
+
+			let requested_capture = ui
+				.add_enabled_ui(self.state.camera_ready(), |ui| {
+					ui.toggle_value(
+						self.state.get_show_display_mut(),
+						"Show display panel",
+					);
+					user_interface::capture_controls(
+						ui,
+						self.state.get_live_feed_mut(),
+					)
+				})
+				.inner;
+
+			if self.state.camera_ready() {
+				let mut controls = self.state.get_controls();
+				if controls.is_empty() {
+					ui.label("No controls...");
+				} else {
+					ui.spacing_mut().indent_ends_with_horizontal_line = false;
+					let requested_controls =
+						egui::CollapsingHeader::new("Controls:")
+							.default_open(false)
+							.show(ui, |ui| {
+								user_interface::draw_controls(ui, &mut controls)
+							})
+							.body_returned;
+					self.state
+						.set_requested_controls(requested_controls.flatten());
+				}
+			}
+
+			requested_capture
+		})
+		.body_returned
+		.is_some_and(|requested| requested)
+	}
+
+	fn save_section(&mut self, ui: &mut egui::Ui) {
+		egui::Frame::default().inner_margin(8.0).show(ui, |ui| {
+			ui.add_enabled_ui(
+				self.state.current_state_is_preparation(),
+				|ui| {
+					let res = self.ui.query_external_laser(ui);
+					if user_interface::save_button(ui, self.state.is_complete())
+					{
+						self.state.try_to_collecting(res);
+					}
+				},
+			);
+
+			ui.add_enabled_ui(self.state.current_state_is_collecting(), |ui| {
+				user_interface::draw_collecting(
+					ui,
+					self.state.get_saving_progress(),
+				);
+			});
+		});
+	}
+
+	fn update(&mut self, ui: &mut egui::Ui, requested_capture: bool) {
+		self.state.execute_for_preparation(
+			&mut self.capture,
+			ui,
+			requested_capture,
+		);
+
+		self.state.execute_for_collecting(&mut self.capture);
+
+		self.state.execute_for_building_csv();
+
+		if self.state.get_live_feed()
+			|| requested_capture
+			|| self.state.current_state_is_collecting()
+		{
+			ui.request_repaint();
 		}
 	}
 }
 
 impl eframe::App for DatasetAssistantApp {
-	#[expect(
-		clippy::too_many_lines,
-		reason = "I am aware, and I keep trying to reduce it"
-	)]
 	fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-		egui::Panel::left("controls").show(ui, |ui| {
-			ui.style_mut().spacing.scroll = egui::style::ScrollStyle::solid();
-			egui::ScrollArea::vertical().show(ui, |ui| {
-				let mut request_capture = false;
-				ui.set_width_range(CONTROLS_WIDTH_MIN..=CONTROLS_WIDTH_MAX);
-				UserInterface::add_heading(ui);
-				UserInterface::add_subheading(ui, "Directory");
+		let show_display = self.state.get_show_display();
 
-				ui.add_enabled_ui(
-					self.state.current_state_is_preparation(),
-					|ui| {
-						ui.indent("directory", |ui| {
-							ui.add_enabled_ui(!self.state.live_feed, |ui| {
-								ui.label(&self.state.dataset_path_label);
-								self.state.chose_folder =
-									UserInterface::choose_folder(ui);
+		let requested_capture = if show_display {
+			let requested_capture =
+				user_interface::control_panel_expanded(ui, |ui| {
+					self.show_controls(ui)
+				})
+				.inner;
 
-								ui.separator();
-
-								ui.label(&self.state.subset_path_label);
-								ui.add_enabled_ui(
-									self.state.is_dataset(),
-									|ui| {
-										if let Some(selection) =
-											UserInterface::build_csv_selection(
-												ui,
-											) {
-											self.state.should_build_csv =
-												selection;
-										}
-
-										if let Some(subset) = UserInterface::display_subset_entry_grid(
-									ui,
-									&mut self.state.camera_position_input,
-									&mut self.state.laser_intensity_input,
-								) {
-									self.state.try_add_subset(subset);
-								}
-									},
-								);
-							});
-						});
-
-						ui.separator();
-
-						UserInterface::add_subheading(ui, "Camera");
-
-						ui.indent("camera", |ui| {
-							ui.add_enabled_ui(!self.state.live_feed, |ui| {
-								if let Some(selection) =
-									UserInterface::camera_selection(
-										ui,
-										&self.state.camera_id_label,
-									) {
-									self.state.requested_cam_index = selection;
-								}
-							});
-
-							ui.separator();
-
-							ui.add_enabled_ui(self.state.is_camera(), |ui| {
-								request_capture =
-									UserInterface::capture_controls(
-										ui,
-										&mut self.state.live_feed,
-									);
-							});
-
-							if self.state.is_camera() {
-								ui.collapsing("Controls:", |ui| {
-									self.state.requested_controls =
-										UserInterface::draw_controls(
-											ui,
-											&mut self
-												.state
-												.controls
-												.iter_mut()
-												.collect(),
-										);
-								});
-							}
-						});
-
-						ui.add_space(5.0);
-
-						if UserInterface::save_button(
-							ui,
-							self.state.is_complete(),
-						) {
-							self.state.try_to_collecting();
-						}
-					},
-				);
-
-				ui.add_enabled_ui(
-					self.state.current_state_is_collecting(),
-					|ui| {
-						UserInterface::draw_collecting(
-							ui,
-							&self.state.saving_progress,
-						);
-					},
-				);
-
-				self.state.execute_for_preparation(
-					&mut self.capture,
-					ui,
-					request_capture,
-				);
-
-				self.state.execute_for_collecting(&mut self.capture);
-
-				self.state.execute_for_building_csv();
-
-				if self.state.live_feed
-					|| request_capture
-					|| self.state.current_state_is_collecting()
-				{
-					ui.request_repaint();
-				}
+			user_interface::display_panel(ui, |ui| {
+				self.capture.display_image(ui);
 			});
-		});
 
-		let fill = ui.style().visuals.panel_fill;
-		let frame = egui::Frame::new().inner_margin(0).fill(fill);
-		let panel = egui::CentralPanel::default_margins().frame(frame);
-		panel.show(ui, |ui| {
-			self.capture.display_image(ui);
-		});
+			requested_capture
+		} else {
+			user_interface::control_panel_normal(ui, |ui| {
+				self.show_controls(ui)
+			})
+			.inner
+		};
+
+		self.update(ui, requested_capture);
+
+		let new_show_display = self.state.get_show_display();
+		if show_display != new_show_display {
+			if new_show_display {
+				user_interface::adjust_viewport_expanded(ui);
+			} else {
+				user_interface::adjust_viewport_condensed(ui);
+			}
+		}
 	}
 }
