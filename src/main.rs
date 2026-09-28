@@ -70,6 +70,7 @@
 	clippy::expect_used,
 	reason = "This project is allowed to panic when unexpected things happen"
 )]
+#![expect(clippy::result_large_err, reason = "Issue present in external crate")]
 #![cfg_attr(
 	test,
 	expect(clippy::unwrap_used, reason = "Tests are allowed to unwrap")

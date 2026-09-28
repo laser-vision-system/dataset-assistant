@@ -78,16 +78,16 @@ pub struct State {
 	/// Coupled to [`camera`](CameraDevice).
 	/// Transient.
 	requested_cam_index: Option<Option<u32>>,
-	/// Only set with requested cam index, used for controls, capture, and collecting.
-	/// Deeply coupled [here](self).
+	/// Only set with requested cam index, used for controls, capture, and
+	/// collecting. Deeply coupled [here](self).
 	/// Semi-peristent.
 	camera: Option<CameraDevice>,
 	/// Set when selecting camera, only diplayed once.
 	/// Coupled to [here](self) and [`camera`](CameraDevice).
 	/// Persistent.
 	camera_id_label: String,
-	/// Set when adding camera, used when changing controls or building sweeps for collecting.
-	/// Coupled to [`camera`](CameraDevice).
+	/// Set when adding camera, used when changing controls or building sweeps
+	/// for collecting. Coupled to [`camera`](CameraDevice).
 	/// Semi-persistent.
 	controls: Vec<ControlManager>,
 	/// Set externally, consumed when read; glorified parameter input.
@@ -147,14 +147,13 @@ impl State {
 	}
 
 	pub fn subset_ready(&self) -> bool {
-		self.dataset
-			.as_ref()
-			.is_some_and(|inner| inner.subset_ready())
+		self.dataset.as_ref().is_some_and(Dataset::subset_ready)
 	}
 }
 
 /// Setters.
 impl State {
+	#[expect(clippy::needless_pass_by_value, reason = "Value is consumed")]
 	pub fn try_add_subset(&mut self, subset: Subset) {
 		let Some(dataset) = self.dataset.as_mut() else {
 			eprintln!("Attempted to add subset with no dataset!");
@@ -193,6 +192,7 @@ impl State {
 		self.should_build_csv = state;
 	}
 
+	#[expect(clippy::option_option, reason = "It works okay")]
 	pub fn set_requested_cam_index(&mut self, state: Option<Option<u32>>) {
 		self.requested_cam_index = state;
 	}
@@ -383,11 +383,10 @@ impl State {
 			match maybe_dataset {
 				Ok(dataset) => {
 					let new_label = if dataset.is_empty() {
-						format!("{}: {}/", DIRECTORY_SELECTED_LABEL, dataset)
+						format!("{DIRECTORY_SELECTED_LABEL}: {dataset}/")
 					} else {
 						format!(
-							"{}: {}/",
-							NON_EMPTY_DIRECTORY_SELECTED_LABEL, dataset
+							"{NON_EMPTY_DIRECTORY_SELECTED_LABEL}: {dataset}/"
 						)
 					};
 					self.dataset_path_label.replace_with(&new_label);

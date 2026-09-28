@@ -68,10 +68,13 @@ impl Saving {
 
 		if let Some(external_intensity) = self.external_intensity {
 			let value_string = external_intensity.to_string();
-			val_strs
-				.details
-				.push_str(&format!("ExternalLaserIntensity: {value_string}"));
-			val_strs.short.push_str(&format!("_{value_string}"));
+			writeln!(
+				val_strs.details,
+				"ExternalLaserIntensity: {value_string}"
+			)
+			.expect("Writing into the value strings should never fail");
+			write!(val_strs.short, "_{value_string}")
+				.expect("Writing into the value strings should never fail");
 		}
 
 		progress.replace_with(&val_strs.details);

@@ -14,6 +14,7 @@ use edge::tcam_interface::{
 };
 use eframe::egui;
 
+use self::external_laser::ExternalLaser;
 use crate::{
 	camera_controls::ControlManager,
 	entry::{
@@ -30,8 +31,6 @@ use crate::{
 	},
 	subset::Subset,
 };
-
-use self::external_laser::ExternalLaser;
 
 #[derive(Debug, Default)]
 pub struct UIComponents {
@@ -69,7 +68,7 @@ where
 		.extra_letter_spacing(SUBHEADING_FONT_SPACING);
 	egui::CollapsingHeader::new(rich_text)
 		.default_open(true)
-		.icon(|_, _, _| return)
+		.icon(|_, _, _| {})
 		.show(ui, add_contents)
 }
 
@@ -161,11 +160,10 @@ pub fn display_subset_entry_grid(
 		!camera_position_input.is_empty() && !laser_intensity_input.is_empty();
 
 	(trigger && none_empty).then(|| {
-		let subset = Subset::new(
+		Subset::new(
 			camera_position_input.clone(),
 			laser_intensity_input.clone(),
-		);
-		subset
+		)
 	})
 }
 
@@ -346,10 +344,6 @@ where
 	egui::ScrollArea::vertical().show(ui, add_contents)
 }
 
-#[expect(
-	clippy::cast_precision_loss,
-	reason = "The window dimensions will never get big enough to matter"
-)]
 pub fn adjust_viewport_expanded(ui: &mut egui::Ui) {
 	// TODO: Clamp to current control width + image width.
 	set_viewport_min_max(
@@ -357,7 +351,7 @@ pub fn adjust_viewport_expanded(ui: &mut egui::Ui) {
 		[EXPANDED_MIN_WIDTH, EXPANDED_MIN_HEIGHT],
 		[EXPANDED_MAX_WIDTH, EXPANDED_MAX_HEIGHT],
 	);
-	let new_width = ui.viewport_rect().width() + DISPLAY_MIN_WIDTH as f32;
+	let new_width = ui.viewport_rect().width() + DISPLAY_MIN_WIDTH;
 	set_viewport_size(ui, [new_width, ui.viewport_rect().height()]);
 }
 
@@ -367,7 +361,7 @@ pub fn adjust_viewport_condensed(ui: &mut egui::Ui) {
 		[CONTROLS_MIN_WIDTH, DISPLAY_MIN_HEIGHT],
 		[CONTROLS_MAX_WIDTH, 0.0],
 	);
-	let new_width = ui.viewport_rect().width() - DISPLAY_MIN_WIDTH as f32;
+	let new_width = ui.viewport_rect().width() - DISPLAY_MIN_WIDTH;
 	let new_width = new_width.clamp(CONTROLS_MIN_WIDTH, CONTROLS_MAX_WIDTH);
 	set_viewport_size(ui, [new_width, ui.viewport_rect().height()]);
 }

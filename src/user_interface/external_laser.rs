@@ -1,6 +1,6 @@
 use eframe::egui;
 
-use crate::entry::{ParseAs, StaticLabelTextEntryBox};
+use crate::entry::{ParseAs as _, StaticLabelTextEntryBox};
 
 #[derive(Debug, Default)]
 pub struct ExternalLaser {
@@ -24,6 +24,6 @@ impl ExternalLaser {
 			ui.horizontal(|ui| entry_box.parse_as(ui)).inner;
 		if let Some(intensity) = maybe_intensity {
 			self.value = Some(intensity);
-		};
+		}
 	}
 }
