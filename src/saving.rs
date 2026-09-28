@@ -32,13 +32,19 @@ impl ValueStrings {
 pub struct Saving {
 	path: PathBuf,
 	control_sweeps: Vec<ControlSweep>,
+	external_intensity: Option<f32>,
 }
 
 impl Saving {
-	pub fn new(path: PathBuf, control_sweeps: Vec<ControlSweep>) -> Self {
+	pub fn new(
+		path: PathBuf,
+		control_sweeps: Vec<ControlSweep>,
+		external_intensity: Option<f32>,
+	) -> Self {
 		Self {
 			path,
 			control_sweeps,
+			external_intensity,
 		}
 	}
 
@@ -50,12 +56,22 @@ impl Saving {
 		progress: &mut String,
 	) -> Finished {
 		let mut val_strs =
-			ValueStrings::with_capacity(self.control_sweeps.len());
+			ValueStrings::with_capacity(self.control_sweeps.len() + 1);
 		for sweep in &mut self.control_sweeps {
 			sweep.apply_current(camera);
-			_ = writeln!(val_strs.details, "{sweep}");
+			writeln!(val_strs.details, "{sweep}")
+				.expect("Writing into the value strings should never fail");
 			let value = sweep.to_control_type_value().get_value().to_string();
-			_ = write!(val_strs.short, "_{value}");
+			write!(val_strs.short, "_{value}")
+				.expect("Writing into the value strings should never fail");
+		}
+
+		if let Some(external_intensity) = self.external_intensity {
+			let value_string = external_intensity.to_string();
+			val_strs
+				.details
+				.push_str(&format!("ExternalLaserIntensity: {value_string}"));
+			val_strs.short.push_str(&format!("_{value_string}"));
 		}
 
 		progress.replace_with(&val_strs.details);

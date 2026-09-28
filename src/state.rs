@@ -253,7 +253,7 @@ impl State {
 
 /// State changers.
 impl State {
-	pub fn try_to_collecting(&mut self) {
+	pub fn try_to_collecting(&mut self, external_laser: Option<f32>) {
 		let Some(dataset) = self.dataset.as_mut() else {
 			eprintln!("Attempted to collect with no dataset!");
 			return;
@@ -262,7 +262,7 @@ impl State {
 		match path {
 			Ok(path) => {
 				let control_sweeps = build_control_sweeps(&self.controls);
-				let saving = Saving::new(path, control_sweeps);
+				let saving = Saving::new(path, control_sweeps, external_laser);
 				self.stage = Stage::Collecting(saving);
 			},
 			Err(why) => {

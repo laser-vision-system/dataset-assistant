@@ -31,9 +31,7 @@ impl DatasetAssistantApp {
 		let requested_capture = ui
 			.add_enabled_ui(self.state.current_state_is_preparation(), |ui| {
 				self.directory_section(ui);
-				let res = self.camera_section(ui);
-				self.extra_section(ui);
-				res
+				self.camera_section(ui)
 			})
 			.inner;
 
@@ -126,18 +124,15 @@ impl DatasetAssistantApp {
 		.is_some_and(|requested| requested)
 	}
 
-	fn extra_section(&mut self, ui: &mut egui::Ui) {
-		let res = self.ui.query_external_laser(ui);
-	}
-
 	fn save_section(&mut self, ui: &mut egui::Ui) {
 		egui::Frame::default().inner_margin(8.0).show(ui, |ui| {
 			ui.add_enabled_ui(
 				self.state.current_state_is_preparation(),
 				|ui| {
+					let res = self.ui.query_external_laser(ui);
 					if user_interface::save_button(ui, self.state.is_complete())
 					{
-						self.state.try_to_collecting();
+						self.state.try_to_collecting(res);
 					}
 				},
 			);
