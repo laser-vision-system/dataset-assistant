@@ -95,6 +95,10 @@ impl Dataset {
 		self.is_empty
 	}
 
+	pub fn not_empty(&self) -> bool {
+		!self.is_empty
+	}
+
 	pub fn subset_ready(&self) -> bool {
 		self.subset.is_some()
 	}

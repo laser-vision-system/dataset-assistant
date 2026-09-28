@@ -146,6 +146,10 @@ impl State {
 		self.dataset.is_some()
 	}
 
+	pub fn dataset_not_empty(&self) -> bool {
+		self.dataset.as_ref().is_some_and(Dataset::not_empty)
+	}
+
 	pub fn subset_ready(&self) -> bool {
 		self.dataset.as_ref().is_some_and(Dataset::subset_ready)
 	}

@@ -49,6 +49,14 @@ impl DatasetAssistantApp {
 
 				ui.separator();
 
+				ui.add_enabled_ui(self.state.dataset_not_empty(), |ui| {
+					if let Some(selection) =
+						user_interface::build_csv_selection(ui)
+					{
+						self.state.set_should_build_csv(selection);
+					}
+				});
+
 				ui.add_enabled_ui(self.state.dataset_ready(), |ui| {
 					ui.label(self.state.get_subset_path_label());
 					let (camera_position_input, laser_intensity_input) =
@@ -61,14 +69,6 @@ impl DatasetAssistantApp {
 						) {
 						self.state.try_add_subset(subset);
 					}
-
-					ui.add_enabled_ui(self.state.subset_ready(), |ui| {
-						if let Some(selection) =
-							user_interface::build_csv_selection(ui)
-						{
-							self.state.set_should_build_csv(selection);
-						}
-					});
 				});
 			});
 		});
