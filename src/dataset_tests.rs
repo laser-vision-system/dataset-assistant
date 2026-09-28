@@ -7,19 +7,19 @@ fn available_path() {
 	let path = Path::new(
 		"./long/path/guaranteed/to/be/available/a/a/a/a/a/a/a/a/a/a/a/a/",
 	);
-	assert_matches!(is_path_available(path), Ok(()))
+	assert_matches!(is_path_available(path), Ok(()));
 }
 
 #[test]
 fn unavailable_path_file() {
 	let path = Path::new("./examples/dataset_assistant/saving/dataset.rs");
-	assert_matches!(is_path_available(path), Err(why) if why.kind() == io::ErrorKind::NotADirectory)
+	assert_matches!(is_path_available(path), Err(why) if why.kind() == io::ErrorKind::NotADirectory);
 }
 
 #[test]
 fn unavailable_path_not_empty() {
 	let path = Path::new("./examples/dataset_assistant/");
-	assert_matches!(is_path_available(path), Err(why) if why.kind() == io::ErrorKind::DirectoryNotEmpty)
+	assert_matches!(is_path_available(path), Err(why) if why.kind() == io::ErrorKind::DirectoryNotEmpty);
 }
 
 #[test]

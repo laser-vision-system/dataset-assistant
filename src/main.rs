@@ -75,15 +75,6 @@
 	test,
 	expect(clippy::unwrap_used, reason = "Tests are allowed to unwrap")
 )]
-#![cfg_attr(
-	test,
-	expect(clippy::print_stdout, reason = "Tests are allowed to print")
-)]
-#![cfg_attr(
-	test,
-	expect(clippy::use_debug, reason = "Tests are a debug context")
-)]
-#![cfg_attr(test, expect(clippy::panic, reason = "Tests are allowed to panic"))]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // Hide console window on Windows in release.
 
 use eframe::{
