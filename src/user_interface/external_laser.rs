@@ -20,8 +20,10 @@ impl ExternalLaser {
 			&mut self.input_string,
 		);
 
-		let intensity: Option<f32> =
+		let maybe_intensity: Option<f32> =
 			ui.horizontal(|ui| entry_box.parse_as(ui)).inner;
-		self.value = intensity;
+		if let Some(intensity) = maybe_intensity {
+			self.value = Some(intensity);
+		};
 	}
 }
