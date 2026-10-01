@@ -7,15 +7,15 @@ use std::{
 
 use walkdir::{DirEntry, WalkDir};
 
-use super::{
-	_FileWriter, _JoinHandle, CSVBuilderError, CSVBuilderHandle, Result, common,
-};
+use super::{FileWriter, common};
+
+use crate::runner::{Result, Runner, RunnerError, RunnerJoinHandle};
 
 const OUTPUT_NAME: &str = "index.csv";
 
 #[derive(Debug)]
 pub struct Builder {
-	handle: Option<_JoinHandle>,
+	handle: Option<RunnerJoinHandle>,
 }
 
 impl Builder {
@@ -34,8 +34,8 @@ impl Builder {
 	}
 }
 
-impl CSVBuilderHandle for Builder {
-	fn handle(&mut self) -> &mut Option<_JoinHandle> {
+impl Runner for Builder {
+	fn handle(&mut self) -> &mut Option<RunnerJoinHandle> {
 		&mut self.handle
 	}
 }
@@ -67,21 +67,21 @@ fn run(root_path: PathBuf) -> Result<()> {
 
 	let csv_path = root_path.join(OUTPUT_NAME);
 	let mut writer = csv::Writer::from_path(csv_path).map_err(|why| {
-		CSVBuilderError::new(format!("failed to create csv writer: {why}"))
+		RunnerError::new(format!("failed to create csv writer: {why}"))
 	})?;
 
 	write_stream(&root_path, &mut writer, &mut entry_stream)?;
 
-	writer.flush().map_err(|why| {
-		CSVBuilderError::new(format!("failed to flush csv: {why}"))
-	})
+	writer
+		.flush()
+		.map_err(|why| RunnerError::new(format!("failed to flush csv: {why}")))
 }
 
 /// Processes the iterator stream, detects the format, then writes headers and
 /// all subsequent records.
 fn write_stream(
 	root: &Path,
-	writer: &mut _FileWriter,
+	writer: &mut FileWriter,
 	stream: &mut impl Iterator<Item = DirEntry>,
 ) -> Result<()> {
 	let Some(first_entry) = stream.next() else {
@@ -107,7 +107,7 @@ fn detect_format(entry: &DirEntry) -> Result<LegacyFormat> {
 	match get_segments(entry)?.len() {
 		2 => Ok(LegacyFormat::Single),
 		3 => Ok(LegacyFormat::Double),
-		_ => Err(CSVBuilderError::new("unsupported legacy filename format")),
+		_ => Err(RunnerError::new("unsupported legacy filename format")),
 	}
 }
 
@@ -121,7 +121,7 @@ fn get_segments(entry: &DirEntry) -> Result<Vec<String>> {
 }
 
 /// Writes the header row based on the detected format.
-fn write_headers(writer: &mut _FileWriter, format: LegacyFormat) -> Result<()> {
+fn write_headers(writer: &mut FileWriter, format: LegacyFormat) -> Result<()> {
 	let headers = match format {
 		LegacyFormat::Single => vec!["relative_path", "intensity"],
 		LegacyFormat::Double => {
@@ -130,12 +130,12 @@ fn write_headers(writer: &mut _FileWriter, format: LegacyFormat) -> Result<()> {
 	};
 
 	writer.write_record(&headers).map_err(|why| {
-		CSVBuilderError::new(format!("failed to write csv headers: {why}"))
+		RunnerError::new(format!("failed to write csv headers: {why}"))
 	})
 }
 
 /// Writes a single dataset entry as a row in the CSV file.
-fn write_record(writer: &mut _FileWriter, entry: &LegacyEntry) -> Result<()> {
+fn write_record(writer: &mut FileWriter, entry: &LegacyEntry) -> Result<()> {
 	let mut record = vec![entry.relative_path.clone()];
 
 	record.push(entry.intensity.clone());
@@ -145,7 +145,7 @@ fn write_record(writer: &mut _FileWriter, entry: &LegacyEntry) -> Result<()> {
 	}
 
 	writer.write_record(&record).map_err(|why| {
-		CSVBuilderError::new(format!("failed to write csv record: {why}"))
+		RunnerError::new(format!("failed to write csv record: {why}"))
 	})
 }
 
@@ -160,13 +160,13 @@ fn create_legacy_entry(
 	let relative_path = common::get_relative_path(root, entry.path())?;
 	let segments = get_segments(entry)?;
 	if segments.len() <= 1 {
-		return Err(CSVBuilderError::new("not enough segments in filename"));
+		return Err(RunnerError::new("not enough segments in filename"));
 	}
 
 	match format {
 		LegacyFormat::Single => {
 			if segments.len() != 2 {
-				return Err(CSVBuilderError::new(
+				return Err(RunnerError::new(
 					"inconsistent dataset formatting detected",
 				));
 			}
@@ -178,7 +178,7 @@ fn create_legacy_entry(
 		},
 		LegacyFormat::Double => {
 			if segments.len() != 3 {
-				return Err(CSVBuilderError::new(
+				return Err(RunnerError::new(
 					"inconsistent dataset formatting detected",
 				));
 			}
