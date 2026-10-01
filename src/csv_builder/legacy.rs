@@ -7,7 +7,9 @@ use std::{
 
 use walkdir::{DirEntry, WalkDir};
 
-use super::{FileWriter, common};
+use super::{
+	FileWriter, get_file_name, get_relative_path, is_image_file, is_not_git_dir,
+};
 
 use crate::runner::{Result, Runner, RunnerError, RunnerJoinHandle};
 
@@ -61,9 +63,9 @@ fn run(root_path: PathBuf) -> Result<()> {
 	let mut entry_stream = WalkDir::new(&root_path)
 		.min_depth(1)
 		.into_iter()
-		.filter_entry(common::is_not_git_dir)
+		.filter_entry(is_not_git_dir)
 		.filter_map(std::result::Result::ok)
-		.filter(common::is_image_file);
+		.filter(is_image_file);
 
 	let csv_path = root_path.join(OUTPUT_NAME);
 	let mut writer = csv::Writer::from_path(csv_path).map_err(|why| {
@@ -113,7 +115,7 @@ fn detect_format(entry: &DirEntry) -> Result<LegacyFormat> {
 
 /// Split an entry name into segments by underscores.
 fn get_segments(entry: &DirEntry) -> Result<Vec<String>> {
-	let name = common::get_file_name(entry.path())?;
+	let name = get_file_name(entry.path())?;
 	let name_without_ext = name.strip_suffix(".png").unwrap_or(&name);
 	let segments: Vec<String> =
 		name_without_ext.split('_').map(str::to_owned).collect();
@@ -157,7 +159,7 @@ fn create_legacy_entry(
 	entry: &DirEntry,
 	format: LegacyFormat,
 ) -> Result<LegacyEntry> {
-	let relative_path = common::get_relative_path(root, entry.path())?;
+	let relative_path = get_relative_path(root, entry.path())?;
 	let segments = get_segments(entry)?;
 	if segments.len() <= 1 {
 		return Err(RunnerError::new("not enough segments in filename"));

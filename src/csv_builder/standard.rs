@@ -8,7 +8,9 @@ use std::{
 
 use walkdir::{DirEntry, WalkDir};
 
-use super::{FileWriter, common};
+use super::{
+	FileWriter, get_file_name, get_relative_path, is_image_file, is_not_git_dir,
+};
 
 use crate::runner::{Result, Runner, RunnerError, RunnerJoinHandle};
 
@@ -122,9 +124,9 @@ fn run(root_path: PathBuf) -> Result<()> {
 	let mut entry_stream = WalkDir::new(&root_path)
 		.min_depth(1)
 		.into_iter()
-		.filter_entry(common::is_not_git_dir)
+		.filter_entry(is_not_git_dir)
 		.filter_map(std::result::Result::ok)
-		.filter(common::is_image_file)
+		.filter(is_image_file)
 		.map(|entry| create_dataset_entry(&root_path, &entry));
 
 	let csv_path = root_path.join(OUTPUT_NAME);
@@ -145,14 +147,14 @@ fn create_dataset_entry(
 	image_entry: &DirEntry,
 ) -> Result<DatasetEntry> {
 	let image_path = image_entry.path();
-	let relative_path = common::get_relative_path(root, image_path)?;
+	let relative_path = get_relative_path(root, image_path)?;
 
 	let intensity_dir = get_parent_directory(image_path)?;
 	let position_dir = get_parent_directory(intensity_dir)?;
 
-	let intensity_name = common::get_file_name(intensity_dir)?;
+	let intensity_name = get_file_name(intensity_dir)?;
 	let intensity = parse_intensity(&intensity_name)?;
-	let position = common::get_file_name(position_dir)?;
+	let position = get_file_name(position_dir)?;
 
 	let metadata_path = image_path.with_extension("txt");
 	let metadata = read_metadata(&metadata_path)?;
