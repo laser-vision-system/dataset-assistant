@@ -14,8 +14,9 @@ use crate::{
 		try_disable_auto_exposure,
 	},
 	capture::Capture,
-	csv_builder::{CSVBuilder, Version},
+	csv_builder::Version,
 	dataset::Dataset,
+	runner::Runner,
 	saving::Saving,
 	settings::{
 		DEFAULT_CAMERA_LABEL, DEFAULT_PATH_LABEL, DEFAULT_SUBSET_LABEL,
@@ -31,7 +32,7 @@ enum Stage {
 	#[default]
 	Preparation,
 	Collecting(Saving),
-	BuildingCSV(Box<dyn CSVBuilder>),
+	BuildingCSV(Box<dyn Runner>),
 }
 
 /// Internal program state.
@@ -407,7 +408,7 @@ impl State {
 	}
 }
 
-/// Collecting state.
+/// `Collecting` state.
 impl State {
 	pub fn execute_for_collecting(&mut self, capture: &mut Capture) {
 		if let Stage::Collecting(saving) = &mut self.stage

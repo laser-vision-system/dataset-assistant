@@ -90,6 +90,7 @@ mod capture;
 mod csv_builder;
 mod dataset;
 mod entry;
+mod runner;
 mod saving;
 mod settings;
 mod state;

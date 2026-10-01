@@ -8,15 +8,15 @@ use std::{
 
 use walkdir::{DirEntry, WalkDir};
 
-use super::{
-	_FileWriter, _JoinHandle, CSVBuilderError, CSVBuilderHandle, Result, common,
-};
+use super::{FileWriter, common};
+
+use crate::runner::{Result, Runner, RunnerError, RunnerJoinHandle};
 
 const OUTPUT_NAME: &str = "index.csv";
 
 #[derive(Debug)]
 pub struct Builder {
-	handle: Option<_JoinHandle>,
+	handle: Option<RunnerJoinHandle>,
 }
 
 impl Builder {
@@ -35,8 +35,8 @@ impl Builder {
 	}
 }
 
-impl CSVBuilderHandle for Builder {
-	fn handle(&mut self) -> &mut Option<_JoinHandle> {
+impl Runner for Builder {
+	fn handle(&mut self) -> &mut Option<RunnerJoinHandle> {
 		&mut self.handle
 	}
 }
@@ -55,7 +55,7 @@ enum FieldType {
 impl FieldType {
 	fn try_as_int(value: &str) -> Result<Self> {
 		let int_value = value.parse::<IntType>().map_err(|why| {
-			CSVBuilderError::new(format!(
+			RunnerError::new(format!(
 				"failed to parse metadata value '{value}' as int: {why}"
 			))
 		})?;
@@ -64,7 +64,7 @@ impl FieldType {
 
 	fn try_as_float(value: &str) -> Result<Self> {
 		let float_value = value.parse::<FloatType>().map_err(|why| {
-			CSVBuilderError::new(format!(
+			RunnerError::new(format!(
 				"failed to parse metadata value '{value}' as float: {why}"
 			))
 		})?;
@@ -82,7 +82,7 @@ impl fmt::Display for FieldType {
 }
 
 impl TryFrom<&str> for FieldType {
-	type Error = CSVBuilderError;
+	type Error = RunnerError;
 
 	fn try_from(value: &str) -> Result<Self> {
 		let maybe_int = Self::try_as_int(value);
@@ -94,7 +94,7 @@ impl TryFrom<&str> for FieldType {
 			return Ok(success);
 		}
 
-		Err(CSVBuilderError::new(format!(
+		Err(RunnerError::new(format!(
 			"failed to parse metadata value '{value}'"
 		)))
 	}
@@ -129,14 +129,14 @@ fn run(root_path: PathBuf) -> Result<()> {
 
 	let csv_path = root_path.join(OUTPUT_NAME);
 	let mut writer = csv::Writer::from_path(csv_path).map_err(|why| {
-		CSVBuilderError::new(format!("failed to create csv writer: {why}"))
+		RunnerError::new(format!("failed to create csv writer: {why}"))
 	})?;
 
 	write_stream(&mut writer, &mut entry_stream)?;
 
-	writer.flush().map_err(|why| {
-		CSVBuilderError::new(format!("failed to flush csv: {why}"))
-	})
+	writer
+		.flush()
+		.map_err(|why| RunnerError::new(format!("failed to flush csv: {why}")))
 }
 
 /// Constructs a single dataset entry by parsing the path and reading metadata.
@@ -168,20 +168,20 @@ fn create_dataset_entry(
 /// Extracts the parent directory path from a given path.
 fn get_parent_directory(path: &Path) -> Result<&Path> {
 	path.parent()
-		.ok_or_else(|| CSVBuilderError::new("missing parent directory in path"))
+		.ok_or_else(|| RunnerError::new("missing parent directory in path"))
 }
 
 /// Parses a directory name into an f32 intensity value.
 fn parse_intensity(name: &str) -> Result<f32> {
 	name.parse::<f32>().map_err(|why| {
-		CSVBuilderError::new(format!("failed to parse intensity: {why}"))
+		RunnerError::new(format!("failed to parse intensity: {why}"))
 	})
 }
 
 /// Reads and parses a metadata file into a list of fields.
 fn read_metadata(path: &Path) -> Result<MetadataList> {
 	let content = fs::read_to_string(path).map_err(|why| {
-		CSVBuilderError::new(format!(
+		RunnerError::new(format!(
 			"failed to read metadata file '{}' : {why}",
 			path.display()
 		))
@@ -197,7 +197,7 @@ fn read_metadata(path: &Path) -> Result<MetadataList> {
 /// Parses a single metadata line formatted as `key: value`.
 fn parse_metadata_line(line: &str) -> Result<MetadataField> {
 	let (key, value) = line.split_once(':').ok_or_else(|| {
-		CSVBuilderError::new(format!(
+		RunnerError::new(format!(
 			"invalid metadata line format '{line}', expected 'key: value'"
 		))
 	})?;
@@ -215,7 +215,7 @@ fn parse_metadata_line(line: &str) -> Result<MetadataField> {
 
 /// Processes the iterator stream, writing headers and all subsequent records.
 fn write_stream(
-	writer: &mut _FileWriter,
+	writer: &mut FileWriter,
 	stream: &mut impl Iterator<Item = Result<DatasetEntry>>,
 ) -> Result<()> {
 	// Build headers from the first result.
@@ -235,7 +235,7 @@ fn write_stream(
 
 /// Writes the header row to the CSV file based on the first entry's metadata.
 fn write_headers(
-	writer: &mut _FileWriter,
+	writer: &mut FileWriter,
 	first_entry: &DatasetEntry,
 ) -> Result<()> {
 	let mut headers = vec![
@@ -249,12 +249,12 @@ fn write_headers(
 	}
 
 	writer.write_record(&headers).map_err(|why| {
-		CSVBuilderError::new(format!("failed to write csv headers: {why}"))
+		RunnerError::new(format!("failed to write csv headers: {why}"))
 	})
 }
 
 /// Writes a single dataset entry as a row in the CSV file.
-fn write_record(writer: &mut _FileWriter, entry: &DatasetEntry) -> Result<()> {
+fn write_record(writer: &mut FileWriter, entry: &DatasetEntry) -> Result<()> {
 	let mut record = vec![
 		entry.relative_path.clone(),
 		entry.position.clone(),
@@ -266,6 +266,6 @@ fn write_record(writer: &mut _FileWriter, entry: &DatasetEntry) -> Result<()> {
 	}
 
 	writer.write_record(&record).map_err(|why| {
-		CSVBuilderError::new(format!("failed to write csv record: {why}"))
+		RunnerError::new(format!("failed to write csv record: {why}"))
 	})
 }

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use walkdir::DirEntry;
 
-use super::{CSVBuilderError, Result};
+use crate::runner::{Result, RunnerError};
 
 /// Checks that the directory entry is not a `.git` folder.
 pub fn is_not_git_dir(entry: &DirEntry) -> bool {
@@ -20,16 +20,16 @@ pub fn get_file_name(path: &Path) -> Result<String> {
 	path.file_name()
 		.and_then(|name| name.to_str())
 		.map(String::from)
-		.ok_or_else(|| CSVBuilderError::new("invalid unicode in file name"))
+		.ok_or_else(|| RunnerError::new("invalid unicode in file name"))
 }
 
 /// Calculates the relative path from the root directory to a given file.
 pub fn get_relative_path(root: &Path, file: &Path) -> Result<String> {
 	file.strip_prefix(root)
 		.map_err(|why| {
-			CSVBuilderError::new(format!("failed to strip prefix: {why}"))
+			RunnerError::new(format!("failed to strip prefix: {why}"))
 		})?
 		.to_str()
-		.ok_or_else(|| CSVBuilderError::new("invalid unicode in relative path"))
+		.ok_or_else(|| RunnerError::new("invalid unicode in relative path"))
 		.map(String::from)
 }

@@ -5,41 +5,13 @@ mod common;
 pub mod legacy;
 pub mod standard;
 
-use std::{error::Error, fmt, fs, path::PathBuf, thread};
+use std::{fs, path::PathBuf};
 
-type _JoinHandle = thread::JoinHandle<Result<()>>;
-type _FileWriter = csv::Writer<fs::File>;
-pub type Result<T> = std::result::Result<T, CSVBuilderError>;
+use crate::runner::{Result, Runner, RunnerError};
 
-/// Implement this on a CSV builder type.
-///
-/// Will automatically implement the [`CSVBuilder`] trait with a blanket
-/// implementation.
-trait CSVBuilderHandle {
-	fn handle(&mut self) -> &mut Option<_JoinHandle>;
-}
+type FileWriter = csv::Writer<fs::File>;
 
-#[expect(
-	private_bounds,
-	reason = "The supertrait is for internal implementation and usage only"
-)]
-/// Front-facing trait for types that build a CSV file.
-pub trait CSVBuilder: CSVBuilderHandle {
-	fn is_done(&mut self) -> Option<CSVBuilderResult> {
-		let handle = self.handle().take()?;
-
-		if handle.is_finished() {
-			return Some(handle.into());
-		}
-
-		self.handle().replace(handle);
-		None
-	}
-}
-
-impl<T> CSVBuilder for T where T: CSVBuilderHandle {}
-
-#[expect(dead_code, reason = "May use later")]
+#[expect(dead_code, reason = "May use variants later")]
 /// Publically announce available `CSVBuilder` versions.
 #[derive(Debug)]
 pub enum Version {
@@ -48,55 +20,13 @@ pub enum Version {
 }
 
 impl Version {
-	pub fn try_new(id: u8, path: PathBuf) -> Result<Box<dyn CSVBuilder>> {
+	pub fn try_new(id: u8, path: PathBuf) -> Result<Box<dyn Runner>> {
 		match id {
 			0 => Ok(Box::new(legacy::Builder::new(path))),
 			1 => Ok(Box::new(standard::Builder::new(path))),
-			_ => Err(CSVBuilderError::new(
-				"invalid id passed to version new method",
-			)),
+			_ => {
+				Err(RunnerError::new("invalid id passed to version new method"))
+			},
 		}
 	}
 }
-
-#[derive(Debug)]
-pub struct CSVBuilderResult {
-	handle: _JoinHandle,
-}
-
-impl CSVBuilderResult {
-	#[expect(
-		clippy::unwrap_in_result,
-		reason = "This outcome is bad so it should panic"
-	)]
-	pub fn join(self) -> Result<()> {
-		self.handle
-			.join()
-			.expect("thread panicked and I don't know how to handle it")
-	}
-}
-
-impl From<_JoinHandle> for CSVBuilderResult {
-	fn from(handle: _JoinHandle) -> Self {
-		Self { handle }
-	}
-}
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct CSVBuilderError {
-	why: String,
-}
-
-impl CSVBuilderError {
-	fn new(why: impl Into<String>) -> Self {
-		Self { why: why.into() }
-	}
-}
-
-impl fmt::Display for CSVBuilderError {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "CSVBuilderError: {}", self.why)
-	}
-}
-
-impl Error for CSVBuilderError {}
