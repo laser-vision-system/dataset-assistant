@@ -51,7 +51,6 @@ impl Capture {
 		}
 	}
 
-	#[expect(clippy::print_stderr, reason = "Acceptable in this project")]
 	#[expect(
 		clippy::cast_possible_truncation,
 		reason = "The image dimensions will never get big enough to matter"

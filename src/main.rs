@@ -70,6 +70,10 @@
 	clippy::expect_used,
 	reason = "This project is allowed to panic when unexpected things happen"
 )]
+#![expect(
+	clippy::print_stderr,
+	reason = "This project is allowed to print errors instead of panicking"
+)]
 #![expect(clippy::result_large_err, reason = "Issue present in external crate")]
 #![cfg_attr(
 	test,

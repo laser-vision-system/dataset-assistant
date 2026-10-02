@@ -1,5 +1,4 @@
 #![expect(clippy::unwrap_used, reason = "Lazy developer")]
-#![expect(clippy::print_stderr, reason = "Acceptable in this project")]
 
 use edge::tcam_interface::{
 	CameraDevice,

@@ -4,9 +4,12 @@
 pub mod legacy;
 pub mod standard;
 
-use walkdir::DirEntry;
+use std::{
+	fs,
+	path::{Path, PathBuf},
+};
 
-use std::{fs, path::Path, path::PathBuf};
+use walkdir::DirEntry;
 
 use crate::runner::{Result, Runner, RunnerError};
 
