@@ -296,7 +296,9 @@ impl State {
 
 		self.prep_cam_dev();
 		self.prep_cam_controls();
-		self.prep_capture(capture, request_capture);
+		_ = self
+			.prep_capture(capture, request_capture)
+			.inspect_err(|why| eprintln!("{why}"));
 		self.prep_file_dialog(ui);
 	}
 
@@ -356,25 +358,22 @@ impl State {
 		}
 	}
 
-	fn prep_capture(&mut self, capture: &mut Capture, request_capture: bool) {
+	fn prep_capture(
+		&mut self,
+		capture: &mut Capture,
+		request_capture: bool,
+	) -> Result<(), String> {
 		if request_capture || self.live_feed {
 			let cam = self.camera.as_mut().unwrap();
-			let buffer = match cam.get_frame_buffer() {
-				Ok(frame) => frame,
-				Err(why) => {
-					eprintln!("Failed to get frame: {why}");
-					return;
-				},
-			};
-			let image = match cam.decode_buffer(buffer) {
-				Ok(image) => image,
-				Err(why) => {
-					eprintln!("Failed to decode to image: {why}");
-					return;
-				},
-			};
+			let buffer = cam
+				.get_frame_buffer()
+				.map_err(|why| format!("Failed to get frame: {why}"))?;
+			let image = cam
+				.decode_buffer(buffer)
+				.map_err(|why| format!("Failed to decode to image: {why}"))?;
 			capture.store_image(&image);
 		}
+		Ok(())
 	}
 
 	fn prep_file_dialog(&mut self, ui: &mut egui::Ui) {
