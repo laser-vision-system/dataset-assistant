@@ -161,7 +161,7 @@ impl DatasetAssistantApp {
 		self.state
 			.execute_for_preparation(&mut capture, ui, requested_capture);
 
-		self.state.execute_for_collecting();
+		self.state.execute_for_collecting(ui);
 
 		self.state.execute_for_building_csv();
 

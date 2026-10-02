@@ -429,7 +429,7 @@ impl State {
 
 /// `Collecting` state.
 impl State {
-	pub fn execute_for_collecting(&mut self) {
+	pub fn execute_for_collecting(&mut self, ui: &mut egui::Ui) {
 		let Stage::Collecting(saving) = &mut self.stage else {
 			return;
 		};
@@ -440,6 +440,9 @@ impl State {
 			});
 			// TODO: See if I can play an alert sound.
 			self.stage = Stage::Preparation;
+			ui.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
+				egui::UserAttentionType::Informational,
+			));
 		}
 	}
 }
