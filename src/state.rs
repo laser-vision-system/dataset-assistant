@@ -413,7 +413,9 @@ impl State {
 	pub fn execute_for_collecting(&mut self, capture: &mut Capture) {
 		if let Stage::Collecting(saving) = &mut self.stage
 			&& let Some(cam) = self.camera.as_mut()
-			&& saving.pulse(cam, capture, &mut self.saving_progress_label)
+			&& saving
+				.pulse(cam, capture, &mut self.saving_progress_label)
+				.is_break()
 		{
 			// TODO: See if I can play an alert sound.
 			self.stage = Stage::Preparation;

@@ -1,4 +1,6 @@
-use std::{fmt::Write as _, fs::File, io::Write as _, path::PathBuf};
+use std::{
+	fmt::Write as _, fs::File, io::Write as _, ops::ControlFlow, path::PathBuf,
+};
 
 use edge::tcam_interface::{CameraDevice, controls::traits::ControlValue as _};
 use eframe::egui::TextBuffer as _;
@@ -6,7 +8,7 @@ use eframe::egui::TextBuffer as _;
 use crate::{
 	capture::Capture,
 	settings::{FILE_NAME_BASE, IMAGE_EXTENSION, META_EXTENSION},
-	sweep::{ControlSweep, Finished},
+	sweep::ControlSweep,
 };
 
 const EXPECTED_CONTROL_LENGTH: usize = 19;
@@ -54,7 +56,7 @@ impl Saving {
 		camera: &mut CameraDevice,
 		capture: &mut Capture,
 		progress: &mut String,
-	) -> Finished {
+	) -> ControlFlow<()> {
 		let mut val_strs =
 			ValueStrings::with_capacity(self.control_sweeps.len() + 1);
 
@@ -82,11 +84,9 @@ impl Saving {
 		self.save_once(camera, capture, val_strs);
 
 		// Increment controls for the next pass.
-		if self.increment_controls() {
+		self.increment_controls().map_break(|()| {
 			self.set_to_defaults(camera);
-			return true;
-		}
-		false
+		})
 	}
 
 	/// Set all camera controls to their defaults.
@@ -99,11 +99,18 @@ impl Saving {
 	/// Step once through each sweep in reverse order, short circuiting when a
 	/// step reports that the sweep has not completed. When all steps report
 	/// that they have finished, then so too does this method.
-	fn increment_controls(&mut self) -> Finished {
-		self.control_sweeps
+	fn increment_controls(&mut self) -> ControlFlow<()> {
+		let should_continue = self
+			.control_sweeps
 			.iter_mut()
 			.rev()
-			.all(super::sweep::ControlSweep::step)
+			.any(|sweep| sweep.step().is_continue());
+
+		if should_continue {
+			ControlFlow::Continue(())
+		} else {
+			ControlFlow::Break(())
+		}
 	}
 
 	#[expect(clippy::unwrap_used, reason = "Lazy developer")]
