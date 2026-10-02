@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use eframe::egui;
 
 use crate::{
@@ -9,7 +11,7 @@ use crate::{
 /// The central egui application.
 pub struct DatasetAssistantApp {
 	state: State,
-	capture: Capture,
+	capture: Arc<Mutex<Capture>>,
 	ui: UIComponents,
 }
 
@@ -18,7 +20,7 @@ impl DatasetAssistantApp {
 	pub fn new(ctx: &egui::Context) -> Self {
 		Self {
 			state: State::new(),
-			capture: Capture::new(ctx),
+			capture: Arc::new(Mutex::new(Capture::new(ctx))),
 			ui: UIComponents::default(),
 		}
 	}
@@ -132,11 +134,12 @@ impl DatasetAssistantApp {
 					let res = self.ui.query_external_laser(ui);
 					if user_interface::save_button(ui, self.state.is_complete())
 					{
-						_ = self.state.try_to_collecting(res).inspect_err(
-							|why| {
-								eprintln!("Failed to start collecting: {why}")
-							},
-						);
+						_ = self
+							.state
+							.try_to_collecting(self.capture.clone(), res)
+							.inspect_err(|why| {
+								eprintln!("Failed to start collecting: {why}");
+							});
 					}
 				},
 			);
@@ -144,20 +147,21 @@ impl DatasetAssistantApp {
 			ui.add_enabled_ui(self.state.current_state_is_collecting(), |ui| {
 				user_interface::draw_collecting(
 					ui,
-					self.state.get_saving_progress(),
+					&self.state.get_saving_progress(),
 				);
 			});
 		});
 	}
 
 	fn update(&mut self, ui: &mut egui::Ui, requested_capture: bool) {
-		self.state.execute_for_preparation(
-			&mut self.capture,
-			ui,
-			requested_capture,
-		);
+		let mut capture = self
+			.capture
+			.lock()
+			.expect("Capture should never be poisoned");
+		self.state
+			.execute_for_preparation(&mut capture, ui, requested_capture);
 
-		self.state.execute_for_collecting(&mut self.capture);
+		self.state.execute_for_collecting();
 
 		self.state.execute_for_building_csv();
 
@@ -182,7 +186,10 @@ impl eframe::App for DatasetAssistantApp {
 				.inner;
 
 			user_interface::display_panel(ui, |ui| {
-				self.capture.display_image(ui);
+				self.capture
+					.lock()
+					.expect("Capture should never be poisoned")
+					.display_image(ui);
 			});
 
 			requested_capture
