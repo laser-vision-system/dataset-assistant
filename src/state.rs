@@ -258,22 +258,23 @@ impl State {
 
 /// State changers.
 impl State {
-	pub fn try_to_collecting(&mut self, external_laser: Option<f32>) {
-		let Some(dataset) = self.dataset.as_mut() else {
-			eprintln!("Attempted to collect with no dataset!");
-			return;
-		};
-		let path = dataset.try_create_path();
-		match path {
-			Ok(path) => {
-				let control_sweeps = build_control_sweeps(&self.controls);
-				let saving = Saving::new(path, control_sweeps, external_laser);
-				self.stage = Stage::Collecting(saving);
-			},
-			Err(why) => {
-				eprintln!("Failed to create path for collecting: {why}");
-			},
-		}
+	pub fn try_to_collecting(
+		&mut self,
+		external_laser: Option<f32>,
+	) -> Result<(), String> {
+		let dataset = self
+			.dataset
+			.as_mut()
+			.ok_or_else(|| String::from("No dataset present"))?;
+		let path = dataset.try_create_path().map_err(|why| {
+			format!("Failed to create path for collecting: {why}")
+		})?;
+
+		let control_sweeps = build_control_sweeps(&self.controls);
+		let saving = Saving::new(path, control_sweeps, external_laser);
+		self.stage = Stage::Collecting(saving);
+
+		Ok(())
 	}
 }
 

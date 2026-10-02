@@ -132,7 +132,11 @@ impl DatasetAssistantApp {
 					let res = self.ui.query_external_laser(ui);
 					if user_interface::save_button(ui, self.state.is_complete())
 					{
-						self.state.try_to_collecting(res);
+						_ = self.state.try_to_collecting(res).inspect_err(
+							|why| {
+								eprintln!("Failed to start collecting: {why}")
+							},
+						);
 					}
 				},
 			);
