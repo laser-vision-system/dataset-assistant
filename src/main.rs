@@ -89,6 +89,7 @@ use eframe::{
 use winit::platform::wayland::EventLoopBuilderExtWayland as _; // Bring into context.
 
 mod application;
+mod audio;
 mod camera_controls;
 mod capture;
 mod csv_builder;

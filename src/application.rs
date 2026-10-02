@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use eframe::egui;
 
 use crate::{
+	audio::Audio,
 	capture::Capture,
 	state::State,
 	user_interface::{self, UIComponents},
@@ -13,6 +14,8 @@ pub struct DatasetAssistantApp {
 	state: State,
 	capture: Arc<Mutex<Capture>>,
 	ui: UIComponents,
+	/// For playing a tone when saving completes.
+	sound: Audio,
 }
 
 impl DatasetAssistantApp {
@@ -22,6 +25,7 @@ impl DatasetAssistantApp {
 			state: State::new(),
 			capture: Arc::new(Mutex::new(Capture::new(ctx))),
 			ui: UIComponents::default(),
+			sound: Audio::default(),
 		}
 	}
 
@@ -161,7 +165,7 @@ impl DatasetAssistantApp {
 		self.state
 			.execute_for_preparation(&mut capture, ui, requested_capture);
 
-		self.state.execute_for_collecting(ui);
+		self.state.execute_for_collecting(ui, &self.sound);
 
 		self.state.execute_for_building_csv();
 
