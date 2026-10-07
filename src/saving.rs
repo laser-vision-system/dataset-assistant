@@ -77,7 +77,6 @@ impl Saving {
 		progress: Arc<Mutex<String>>,
 	) -> Self {
 		let run = move || {
-			set_to_defaults(&mut control_sweeps, &camera);
 			// Technically impossible to get any other result.
 			let res = loop_all_permutations(
 				&destination,
