@@ -5,7 +5,7 @@ use std::{error::Error, fmt};
 pub type RunnerJoinHandle = std::thread::JoinHandle<Result<()>>;
 pub type Result<T> = std::result::Result<T, RunnerError>;
 
-/// A `Runner` can execute on a separate thread.
+/// Types that implement this trait can execute on a separate thread.
 pub trait Runner {
 	fn handle(&mut self) -> &mut Option<RunnerJoinHandle>;
 
@@ -50,7 +50,10 @@ pub struct RunnerError {
 }
 
 impl RunnerError {
-	pub fn new(why: impl Into<String>) -> Self {
+	pub fn new<W>(why: W) -> Self
+	where
+		W: Into<String>,
+	{
 		Self { why: why.into() }
 	}
 }

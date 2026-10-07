@@ -10,7 +10,6 @@ use walkdir::{DirEntry, WalkDir};
 use super::{
 	FileWriter, get_file_name, get_relative_path, is_image_file, is_not_git_dir,
 };
-
 use crate::runner::{Result, Runner, RunnerError, RunnerJoinHandle};
 
 const OUTPUT_NAME: &str = "index.csv";

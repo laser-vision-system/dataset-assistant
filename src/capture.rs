@@ -32,6 +32,14 @@ impl Capture {
 	}
 
 	pub fn store_image(&mut self, image: &RgbImage) {
+		#[cfg(debug_assertions)]
+		let (img_width, img_height) = image.dimensions();
+		debug_assert_eq!(
+			(img_width as usize, img_height as usize),
+			(TEXTURE_WIDTH, TEXTURE_HEIGHT),
+			"Expected dimentions: {TEXTURE_WIDTH}x{TEXTURE_HEIGHT}\nReceived dimensions: {img_width}x{img_height}"
+		);
+
 		let image_arc = Arc::new(egui::ColorImage::from_rgb(
 			[TEXTURE_WIDTH, TEXTURE_HEIGHT],
 			image,
@@ -51,7 +59,6 @@ impl Capture {
 		}
 	}
 
-	#[expect(clippy::print_stderr, reason = "Acceptable in this project")]
 	#[expect(
 		clippy::cast_possible_truncation,
 		reason = "The image dimensions will never get big enough to matter"

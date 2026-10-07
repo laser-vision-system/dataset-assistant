@@ -1,4 +1,8 @@
-use std::{fmt, iter::StepBy, ops::RangeInclusive};
+use std::{
+	fmt,
+	iter::StepBy,
+	ops::{ControlFlow, RangeInclusive},
+};
 
 use edge::tcam_interface::{
 	CameraDevice,
@@ -10,8 +14,6 @@ use edge::tcam_interface::{
 
 use crate::camera_controls::ControlManager;
 
-pub type Finished = bool;
-
 #[derive(Debug)]
 pub struct ControlSweep {
 	control: ControlManager,
@@ -20,16 +22,20 @@ pub struct ControlSweep {
 }
 
 impl ControlSweep {
-	pub fn step(&mut self) -> Finished {
+	/// Step once through the control sweep.
+	///
+	/// This returns [`ControlFlow::Continue`] until the iterator is exhausted,
+	/// where it returns [`ControlFlow::Break`].
+	pub fn step(&mut self) -> ControlFlow<()> {
 		if let Some(val) = self.active_iter.next() {
 			self.control
 				.set_value(val)
 				.expect("control should always be set to a valid value");
-			false
+			ControlFlow::Continue(())
 		} else {
 			self.active_iter = Self::create_range(&self.control);
 			self.update_value();
-			true
+			ControlFlow::Break(())
 		}
 	}
 

@@ -1,5 +1,6 @@
 #![expect(clippy::unwrap_used, reason = "Lazy developer")]
-#![expect(clippy::print_stderr, reason = "Acceptable in this project")]
+
+use std::sync::{Arc, Mutex};
 
 use edge::tcam_interface::{
 	CameraDevice,
@@ -9,6 +10,7 @@ use eframe::egui::{self, TextBuffer as _};
 use egui_file_dialog::FileDialog;
 
 use crate::{
+	audio::Audio,
 	camera_controls::{
 		ControlManager, build_control_sweeps, extract_controls,
 		try_disable_auto_exposure,
@@ -31,7 +33,7 @@ use crate::{
 enum Stage {
 	#[default]
 	Preparation,
-	Collecting(Saving),
+	Collecting(Box<dyn Runner>),
 	BuildingCSV(Box<dyn Runner>),
 }
 
@@ -82,7 +84,7 @@ pub struct State {
 	/// Only set with requested cam index, used for controls, capture, and
 	/// collecting. Deeply coupled [here](self).
 	/// Semi-peristent.
-	camera: Option<CameraDevice>,
+	camera: Option<Arc<Mutex<CameraDevice>>>,
 	/// Set when selecting camera, only diplayed once.
 	/// Coupled to [here](self) and [`camera`](CameraDevice).
 	/// Persistent.
@@ -110,7 +112,7 @@ pub struct State {
 	/// Set in saving pulse and used in UI draw collecting.
 	/// Coupled to [here](self) and [`Saving`].
 	/// Persistent.
-	saving_progress_label: String,
+	saving_progress_label: Arc<Mutex<String>>,
 }
 
 /// Associated functions.
@@ -183,7 +185,7 @@ impl State {
 				let skip_exposure =
 					try_disable_auto_exposure(&mut camera).is_err();
 				self.controls = extract_controls(&mut camera, skip_exposure);
-				Some(camera)
+				Some(Arc::new(Mutex::new(camera)))
 			},
 			Err(_) => None,
 		};
@@ -212,8 +214,8 @@ impl State {
 
 /// Getters.
 impl State {
-	pub fn get_saving_progress(&self) -> &str {
-		&self.saving_progress_label
+	pub fn get_saving_progress(&self) -> String {
+		self.saving_progress_label.lock().unwrap().clone()
 	}
 
 	pub fn get_show_display(&mut self) -> bool {
@@ -258,22 +260,35 @@ impl State {
 
 /// State changers.
 impl State {
-	pub fn try_to_collecting(&mut self, external_laser: Option<f32>) {
-		let Some(dataset) = self.dataset.as_mut() else {
-			eprintln!("Attempted to collect with no dataset!");
-			return;
-		};
-		let path = dataset.try_create_path();
-		match path {
-			Ok(path) => {
-				let control_sweeps = build_control_sweeps(&self.controls);
-				let saving = Saving::new(path, control_sweeps, external_laser);
-				self.stage = Stage::Collecting(saving);
-			},
-			Err(why) => {
-				eprintln!("Failed to create path for collecting: {why}");
-			},
-		}
+	pub fn try_to_collecting(
+		&mut self,
+		capture: Arc<Mutex<Capture>>,
+		external_laser: Option<f32>,
+	) -> Result<(), String> {
+		let dataset = self
+			.dataset
+			.as_mut()
+			.ok_or_else(|| String::from("No dataset present"))?;
+		let path = dataset.try_create_path().map_err(|why| {
+			format!("Failed to create path for collecting: {why}")
+		})?;
+		let camera = self
+			.camera
+			.as_mut()
+			.ok_or_else(|| String::from("No camera present"))?;
+
+		let control_sweeps = build_control_sweeps(&self.controls);
+		let saving = Box::new(Saving::start(
+			path,
+			control_sweeps,
+			external_laser,
+			capture,
+			camera.clone(),
+			self.saving_progress_label.clone(),
+		));
+		self.stage = Stage::Collecting(saving);
+
+		Ok(())
 	}
 }
 
@@ -294,8 +309,14 @@ impl State {
 		}
 
 		self.prep_cam_dev();
-		self.prep_cam_controls();
-		self.prep_capture(capture, request_capture);
+
+		if let Some(camera) = self.camera.clone() {
+			self.prep_cam_controls(&camera);
+			_ = self
+				.prep_capture(capture, request_capture, &camera)
+				.inspect_err(|why| eprintln!("{why}"));
+		}
+
 		self.prep_file_dialog(ui);
 	}
 
@@ -326,16 +347,15 @@ impl State {
 		}
 	}
 
-	fn prep_cam_controls(&mut self) {
-		if let Some(cam) = self.camera.as_mut()
-			&& let Some(requested_controls) = self.requested_controls.take()
-		{
+	fn prep_cam_controls(&mut self, camera: &Mutex<CameraDevice>) {
+		if let Some(requested_controls) = self.requested_controls.take() {
 			debug_assert_eq!(
 				self.controls.len(),
 				requested_controls.len(),
 				"Different sizes will cause data loss"
 			);
 
+			let mut cam = camera.lock().unwrap();
 			for (mut value, manager) in
 				requested_controls.into_iter().zip(&mut self.controls)
 			{
@@ -355,25 +375,25 @@ impl State {
 		}
 	}
 
-	fn prep_capture(&mut self, capture: &mut Capture, request_capture: bool) {
+	fn prep_capture(
+		&mut self,
+		capture: &mut Capture,
+		request_capture: bool,
+		camera: &Mutex<CameraDevice>,
+	) -> Result<(), String> {
 		if request_capture || self.live_feed {
-			let cam = self.camera.as_mut().unwrap();
-			let buffer = match cam.get_frame_buffer() {
-				Ok(frame) => frame,
-				Err(why) => {
-					eprintln!("Failed to get frame: {why}");
-					return;
-				},
-			};
-			let image = match cam.decode_buffer(buffer) {
-				Ok(image) => image,
-				Err(why) => {
-					eprintln!("Failed to decode to image: {why}");
-					return;
-				},
-			};
+			let mut cam = camera
+				.lock()
+				.map_err(|why| format!("Unlocking camera failed: {why}"))?;
+			let buffer = cam
+				.get_frame_buffer()
+				.map_err(|why| format!("Failed to get frame: {why}"))?;
+			let image = cam
+				.decode_buffer(buffer)
+				.map_err(|why| format!("Failed to decode to image: {why}"))?;
 			capture.store_image(&image);
 		}
+		Ok(())
 	}
 
 	fn prep_file_dialog(&mut self, ui: &mut egui::Ui) {
@@ -410,13 +430,20 @@ impl State {
 
 /// `Collecting` state.
 impl State {
-	pub fn execute_for_collecting(&mut self, capture: &mut Capture) {
-		if let Stage::Collecting(saving) = &mut self.stage
-			&& let Some(cam) = self.camera.as_mut()
-			&& saving.pulse(cam, capture, &mut self.saving_progress_label)
-		{
-			// TODO: See if I can play an alert sound.
+	pub fn execute_for_collecting(&mut self, ui: &mut egui::Ui, sound: &Audio) {
+		let Stage::Collecting(saving) = &mut self.stage else {
+			return;
+		};
+
+		if let Some(handle) = saving.is_done() {
+			handle.join().err().inspect(|why| {
+				eprintln!("csv_builder returned with error: {why}");
+			});
 			self.stage = Stage::Preparation;
+			ui.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
+				egui::UserAttentionType::Informational,
+			));
+			sound.play_save_tone();
 		}
 	}
 }
