@@ -168,11 +168,13 @@ fn update_cam_controls(
 }
 
 /// Call a function on each [`ControlSweep`].
-fn call_on_each<F>(control_sweeps: Vec<&mut ControlSweep>, func: F)
+fn call_on_each<F>(control_sweeps: Vec<&mut ControlSweep>, mut func: F)
 where
 	F: FnMut(&mut ControlSweep),
 {
-	control_sweeps.into_iter().for_each(func);
+	for sweep in control_sweeps {
+		func(sweep)
+	}
 }
 
 /// Extract a decoded image from a [`CameraDevice`].
