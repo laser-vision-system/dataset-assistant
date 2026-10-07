@@ -126,7 +126,7 @@ fn loop_all_permutations(
 			val_strs.append("externalLaserIntensity", &value_string);
 		}
 
-		let sweeps = sweep_mut_refs(control_sweeps);
+		let sweeps = make_owned_collection(control_sweeps);
 		update_cam_controls(sweeps, camera, &mut val_strs);
 
 		progress.lock().unwrap().replace_with(&val_strs.detailed);
@@ -143,35 +143,17 @@ fn loop_all_permutations(
 	}
 }
 
-/// Set all camera controls to their defaults.
-fn set_to_defaults(
-	control_sweeps: &mut Vec<ControlSweep>,
-	camera: &Mutex<CameraDevice>,
-) {
-	let mut camera = camera.lock().unwrap();
-	for sweep_types in control_sweeps {
-		sweep_types.apply_default(&mut camera);
-	}
-}
-
-/// Convert a `&mut Vec<ControlSweep>` into `Vec<&mut ControlSweep>`.
-fn sweep_mut_refs(
+/// Convert a mutable reference to a collection into a collection of mutable
+/// references.
+fn make_owned_collection(
 	control_sweeps: &mut [ControlSweep],
 ) -> Vec<&mut ControlSweep> {
 	control_sweeps.iter_mut().collect()
 }
 
-/// Call a function on each [`ControlSweep`].
-fn call_on_each<F>(control_sweeps: Vec<&mut ControlSweep>, func: F)
-where
-	F: FnMut(&mut ControlSweep),
-{
-	control_sweeps.into_iter().for_each(func);
-}
-
 /// Update the [`CameraDevice`] controls with the [`ControlSweep`]s.
 ///
-/// Append the [`ControlSweep`] to the [`ValueStrings`].
+/// Append the [`ControlSweep`] to [`ImageMetadata`].
 fn update_cam_controls(
 	control_sweeps: Vec<&mut ControlSweep>,
 	camera: &Mutex<CameraDevice>,
@@ -183,6 +165,44 @@ fn update_cam_controls(
 		sweep.apply_current(&mut camera);
 		val_strs.append_sweep(sweep);
 	});
+}
+
+/// Call a function on each [`ControlSweep`].
+fn call_on_each<F>(control_sweeps: Vec<&mut ControlSweep>, func: F)
+where
+	F: FnMut(&mut ControlSweep),
+{
+	control_sweeps.into_iter().for_each(func);
+}
+
+/// Extract a decoded image from a [`CameraDevice`].
+fn get_image(camera: &mut CameraDevice) -> RgbImage {
+	// To address latency, skip 1 frame.
+	camera.get_frame_buffer().unwrap();
+	let buffer = camera.get_frame_buffer().unwrap();
+	camera.decode_buffer(buffer).unwrap()
+}
+
+fn create_image_path(destination: &Path, short: &str) -> PathBuf {
+	destination.join(format!("{FILE_NAME_BASE}{short}.{IMAGE_EXTENSION}"))
+}
+
+fn save_image_to(
+	capture: &mut Capture,
+	image: &RgbImage,
+	img_filepath: &PathBuf,
+) {
+	capture.store_image(image);
+	capture.save_to_file(img_filepath);
+}
+
+fn create_metadata_path(destination: &Path, short: &str) -> PathBuf {
+	destination.join(format!("{FILE_NAME_BASE}{short}.{META_EXTENSION}"))
+}
+
+fn save_metadata_to(meta_filepath: &PathBuf, details: &str) {
+	let mut output = File::create_new(meta_filepath).unwrap();
+	write!(output, "{details}").unwrap();
 }
 
 /// Step once through each sweep in reverse order, short circuiting when a
@@ -201,32 +221,13 @@ fn increment_controls(control_sweeps: &mut [ControlSweep]) -> ControlFlow<()> {
 	}
 }
 
-/// Extract a decoded image from a [`CameraDevice`].
-fn get_image(camera: &mut CameraDevice) -> RgbImage {
-	// To address latency, skip 1 frame.
-	camera.get_frame_buffer().unwrap();
-	let buffer = camera.get_frame_buffer().unwrap();
-	camera.decode_buffer(buffer).unwrap()
-}
-
-fn create_image_path(destination: &Path, short: &str) -> PathBuf {
-	destination.join(format!("{FILE_NAME_BASE}{short}.{IMAGE_EXTENSION}"))
-}
-
-fn create_metadata_path(destination: &Path, short: &str) -> PathBuf {
-	destination.join(format!("{FILE_NAME_BASE}{short}.{META_EXTENSION}"))
-}
-
-fn save_image_to(
-	capture: &mut Capture,
-	image: &RgbImage,
-	img_filepath: &PathBuf,
+/// Set all camera controls to their defaults.
+fn set_to_defaults(
+	control_sweeps: &mut Vec<ControlSweep>,
+	camera: &Mutex<CameraDevice>,
 ) {
-	capture.store_image(image);
-	capture.save_to_file(img_filepath);
-}
-
-fn save_metadata_to(meta_filepath: &PathBuf, details: &str) {
-	let mut output = File::create_new(meta_filepath).unwrap();
-	write!(output, "{details}").unwrap();
+	let mut camera = camera.lock().unwrap();
+	for sweep_types in control_sweeps {
+		sweep_types.apply_default(&mut camera);
+	}
 }
