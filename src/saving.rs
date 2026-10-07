@@ -8,6 +8,7 @@ use std::{
 	path::{Path, PathBuf},
 	sync::{Arc, Mutex},
 	thread,
+	time::Duration,
 };
 
 use edge::tcam_interface::{CameraDevice, controls::traits::ControlValue as _};
@@ -22,6 +23,7 @@ use crate::{
 };
 
 const EXPECTED_CONTROL_LENGTH: usize = 19;
+const CAMERA_GRACE_PERIOD: Duration = Duration::from_millis(100);
 
 #[derive(Debug)]
 struct ImageMetadata {
@@ -128,6 +130,10 @@ fn loop_all_permutations(
 
 		let sweeps = make_owned_collection(control_sweeps);
 		update_cam_controls(sweeps, camera, &mut val_strs);
+
+		// Give the camera enough time to apply the change.
+		// Especially for the exposure time, to allow the sensor to flush.
+		thread::sleep(CAMERA_GRACE_PERIOD);
 
 		progress.lock().unwrap().replace_with(&val_strs.detailed);
 		let image = get_image(&mut camera.lock().unwrap());
