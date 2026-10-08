@@ -34,11 +34,8 @@ impl Capture {
 	pub fn store_image(&mut self, image: &RgbImage) {
 		#[cfg(debug_assertions)]
 		let (img_width, img_height) = image.dimensions();
-		debug_assert_eq!(
-			(img_width as usize, img_height as usize),
-			(TEXTURE_WIDTH, TEXTURE_HEIGHT),
-			"Expected dimentions: {TEXTURE_WIDTH}x{TEXTURE_HEIGHT}\nReceived dimensions: {img_width}x{img_height}"
-		);
+		#[cfg(debug_assertions)]
+		assert_dimensions(img_width as usize, img_height as usize);
 
 		let image_arc = Arc::new(egui::ColorImage::from_rgb(
 			[TEXTURE_WIDTH, TEXTURE_HEIGHT],
@@ -80,4 +77,13 @@ impl Capture {
 			eprintln!("Error saving capture {why}");
 		}
 	}
+}
+
+#[cfg(debug_assertions)]
+fn assert_dimensions(img_width: usize, img_height: usize) {
+	debug_assert_eq!(
+		(img_width, img_height),
+		(TEXTURE_WIDTH, TEXTURE_HEIGHT),
+		"Expected dimentions: {TEXTURE_WIDTH}x{TEXTURE_HEIGHT}\nReceived dimensions: {img_width}x{img_height}"
+	);
 }
