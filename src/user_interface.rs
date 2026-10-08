@@ -39,7 +39,10 @@ pub struct UIComponents {
 
 impl UIComponents {
 	pub fn query_external_laser(&mut self, ui: &mut egui::Ui) -> Option<f32> {
-		self.external_laser.external_intensity_entry(ui);
+		ui.horizontal(|ui| {
+			self.external_laser.clear_button(ui);
+			self.external_laser.external_intensity_entry(ui);
+		});
 		self.external_laser.get_value()
 	}
 }
