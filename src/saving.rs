@@ -11,7 +11,11 @@ use std::{
 	time::Duration,
 };
 
-use edge::tcam_interface::{CameraDevice, controls::traits::ControlValue as _};
+use edge_cameras::{
+	camera_device::{CameraDevice, CameraLike},
+	controls::traits::ControlValue as _,
+};
+use edge_core::image::Image;
 use eframe::egui::TextBuffer as _;
 use image::RgbImage;
 
@@ -184,11 +188,11 @@ where
 }
 
 /// Extract a decoded image from a [`CameraDevice`].
-fn get_image(camera: &mut CameraDevice) -> RgbImage {
+fn get_image(camera: &mut CameraDevice) -> Image {
 	// To address latency, skip 1 frame.
 	camera.get_frame_buffer().unwrap();
 	let buffer = camera.get_frame_buffer().unwrap();
-	camera.decode_buffer(buffer).unwrap()
+	buffer.try_decode().unwrap()
 }
 
 fn create_image_path(destination: &Path, short: &str) -> PathBuf {

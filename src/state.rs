@@ -2,8 +2,8 @@
 
 use std::sync::{Arc, Mutex};
 
-use edge::tcam_interface::{
-	CameraDevice,
+use edge_cameras::{
+	camera_device::{CameraDevice, CameraLike},
 	controls::{traits::ControlDescription as _, values::ConValueIntegerType},
 };
 use eframe::egui::{self, TextBuffer as _};
@@ -370,7 +370,7 @@ impl State {
 				let newval = manager.base.get_value();
 				let reason =
 					format!("value should be valid for {id}, recieved '{val}'");
-				cam.set_control(id, newval).expect(&reason);
+				cam.set_control(id, newval.into()).expect(&reason);
 			}
 		}
 	}
@@ -388,8 +388,8 @@ impl State {
 			let buffer = cam
 				.get_frame_buffer()
 				.map_err(|why| format!("Failed to get frame: {why}"))?;
-			let image = cam
-				.decode_buffer(buffer)
+			let image = buffer
+				.try_decode()
 				.map_err(|why| format!("Failed to decode to image: {why}"))?;
 			capture.store_image(&image);
 		}

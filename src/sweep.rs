@@ -4,8 +4,8 @@ use std::{
 	ops::{ControlFlow, RangeInclusive},
 };
 
-use edge::tcam_interface::{
-	CameraDevice,
+use edge_cameras::{
+	camera_device::{CameraDevice, CameraLike},
 	controls::{
 		traits::{ControlDefault as _, ControlDescription as _},
 		values::{ConValueInteger, ConValueIntegerType},
@@ -72,7 +72,7 @@ impl ControlSweep {
 		let id = self.control.get_id();
 		let value = self.control.base.get_value();
 		camera
-			.set_control(id, value)
+			.set_control(id, value.into())
 			.expect("control should always be set to a valid value");
 	}
 
@@ -80,7 +80,7 @@ impl ControlSweep {
 		let id = self.control.get_id();
 		let value = self.control.base.get_value();
 		camera
-			.set_control(id, value)
+			.set_control(id, value.into())
 			.expect("control should always be set to a valid value");
 	}
 }

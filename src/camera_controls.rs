@@ -1,16 +1,14 @@
-use edge::{
-	error::{EdgeError, Result},
-	tcam_interface::{
-		CameraDevice, CameraDeviceError,
-		controls::{
-			descriptions::{CamControl, IntegerRangeControl},
-			traits::{
-				ControlDefault, ControlDescription, ControlItems as _,
-				ControlMax, ControlMin, ControlStep, ControlValue as _,
-			},
-			values::ConValueIntegerType,
+use edge_cameras::{
+	camera_device::{CameraDevice, CameraLike},
+	controls::{
+		descriptions::{CamControl, IntegerRangeControl},
+		traits::{
+			ControlDefault, ControlDescription, ControlItems as _, ControlMax,
+			ControlMin, ControlStep, ControlValue as _,
 		},
+		values::ConValueIntegerType,
 	},
+	error::{EdgeCamerasError, EdgeCamerasResult},
 };
 use nokhwa::utils::{KnownCameraControl, MenuItem};
 
@@ -92,7 +90,7 @@ impl ControlDescription for ControlManager {
 		self.base.get_id()
 	}
 
-	fn set_value(&mut self, value: Self::ValueType) -> Result<()> {
+	fn set_value(&mut self, value: Self::ValueType) -> EdgeCamerasResult<()> {
 		self.base.set_value(value.into())?;
 		self.value = value;
 		Ok(())
@@ -146,13 +144,11 @@ impl ControlMax for ControlManager {
 }
 
 impl TryFrom<CamControl> for ControlManager {
-	type Error = EdgeError;
+	type Error = EdgeCamerasError;
 
-	fn try_from(value: CamControl) -> Result<Self> {
+	fn try_from(value: CamControl) -> EdgeCamerasResult<Self> {
 		let CamControl::IntegerRange(control) = value else {
-			return Err(EdgeError::General {
-				reason: "Wrong control type".into(),
-			});
+			return Err(EdgeCamerasError::InvalidControlValue);
 		};
 		Ok(Self {
 			base: control,
@@ -169,10 +165,14 @@ impl TryFrom<CamControl> for ControlManager {
 	}
 }
 
-pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<()> {
+pub fn try_disable_auto_exposure(
+	camera: &mut CameraDevice,
+) -> EdgeCamerasResult<()> {
 	let id = KnownCameraControl::AutoExposure;
 	let CamControl::Menu(control) = camera.get_control(id)? else {
-		return Err(EdgeError::from(CameraDeviceError::GetControlType(id)));
+		return Err(EdgeCamerasError::from(EdgeCamerasError::GetControlType(
+			id,
+		)));
 	};
 	let items = control.get_items();
 	let valid_entires: Vec<_> = items
@@ -184,9 +184,9 @@ pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<()> {
 			PATTERNS.into_iter().any(|pattern| name.contains(pattern))
 		})
 		.collect();
-	let &first = valid_entires.first().ok_or(EdgeError::General {
-		reason: "Wrong control type".into(),
-	})?;
+	let &first = valid_entires
+		.first()
+		.ok_or(EdgeCamerasError::InvalidControlValue)?;
 	let mut value = control.get_value();
 	value.set_value(first.get_id());
 	#[expect(
@@ -194,7 +194,7 @@ pub fn try_disable_auto_exposure(camera: &mut CameraDevice) -> Result<()> {
 		reason = "value should be validated by control description"
 	)]
 	camera
-		.set_control(id, value)
+		.set_control(id, value.into())
 		.expect("value should be validated by control description");
 	Ok(())
 }

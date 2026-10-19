@@ -2,8 +2,8 @@
 
 pub mod external_laser;
 
-use edge::tcam_interface::{
-	CameraDevice,
+use edge_cameras::{
+	camera_device::query_for_available_cameras,
 	controls::{
 		traits::{
 			ControlDefault as _, ControlDescription as _, ControlMax as _,
@@ -93,7 +93,7 @@ pub fn camera_selection(
 			}
 
 			// Cannot be cached because state might change.
-			for info in CameraDevice::query_for_available_cameras() {
+			for info in query_for_available_cameras() {
 				let Ok(index) = info.index().as_index() else {
 					continue;
 				};
