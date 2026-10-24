@@ -1,4 +1,3 @@
 [submodule "edge"]
 	path = edge
-	url = https://github.com/COS40005-P12/edge
-	branch = refactor-camera
+	url = https://github.com/laser-vision-system/edge
