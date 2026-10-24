@@ -362,12 +362,12 @@ impl State {
 				let Some(val) = value.take() else {
 					continue;
 				};
-				if manager.set_value(val).is_err() {
+				if manager.try_set_control_value(val).is_err() {
 					continue;
 				}
 
-				let id = manager.get_id();
-				let newval = manager.base.get_value();
+				let id = manager.control_id();
+				let newval = manager.base.control_value();
 				let reason =
 					format!("value should be valid for {id}, recieved '{val}'");
 				cam.set_control(id, newval.into()).expect(&reason);

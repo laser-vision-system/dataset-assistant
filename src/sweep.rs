@@ -29,7 +29,7 @@ impl ControlSweep {
 	pub fn step(&mut self) -> ControlFlow<()> {
 		if let Some(val) = self.active_iter.next() {
 			self.control
-				.set_value(val)
+				.try_set_control_value(val)
 				.expect("control should always be set to a valid value");
 			ControlFlow::Continue(())
 		} else {
@@ -45,12 +45,12 @@ impl ControlSweep {
 	)]
 	fn update_value(&mut self) {
 		self.control
-			.set_value(self.active_iter.next().unwrap())
+			.try_set_control_value(self.active_iter.next().unwrap())
 			.expect("control should always be set to a valid value");
 	}
 
 	pub fn to_control_type_value(&self) -> ConValueInteger {
-		self.control.base.get_value()
+		self.control.base.control_value()
 	}
 
 	#[expect(
@@ -69,16 +69,16 @@ impl ControlSweep {
 
 	pub fn apply_default(&mut self, camera: &mut CameraDevice) {
 		self.control.reset_to_default();
-		let id = self.control.get_id();
-		let value = self.control.base.get_value();
+		let id = self.control.control_id();
+		let value = self.control.base.control_value();
 		camera
 			.set_control(id, value.into())
 			.expect("control should always be set to a valid value");
 	}
 
 	pub fn apply_current(&mut self, camera: &mut CameraDevice) {
-		let id = self.control.get_id();
-		let value = self.control.base.get_value();
+		let id = self.control.control_id();
+		let value = self.control.base.control_value();
 		camera
 			.set_control(id, value.into())
 			.expect("control should always be set to a valid value");
@@ -99,6 +99,11 @@ impl From<ControlManager> for ControlSweep {
 
 impl fmt::Display for ControlSweep {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "{}: {}", self.control.get_id(), self.control.get_value())
+		write!(
+			f,
+			"{}: {}",
+			self.control.control_id(),
+			self.control.control_value()
+		)
 	}
 }

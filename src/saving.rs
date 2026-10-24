@@ -50,7 +50,7 @@ impl ImageMetadata {
 	pub fn append_sweep(&mut self, sweep: &ControlSweep) {
 		writeln!(self.detailed, "{sweep}")
 			.expect("Writing into the value strings should never fail");
-		let value = sweep.to_control_type_value().get_value().to_string();
+		let value = sweep.to_control_type_value().get().to_string();
 		write!(self.short, "_{value}")
 			.expect("Writing into the value strings should never fail");
 	}

@@ -45,13 +45,13 @@ pub struct ControlManager {
 
 impl ControlManager {
 	pub fn set_min(&mut self, min: ConValueIntegerType) {
-		if self.get_min() <= min && min < self.max {
+		if self.control_min() <= min && min < self.max {
 			self.min = min;
 		}
 	}
 
 	pub fn set_max(&mut self, max: ConValueIntegerType) {
-		if self.min < max && max <= self.get_max() {
+		if self.min < max && max <= self.control_max() {
 			self.max = max;
 		}
 	}
@@ -60,7 +60,7 @@ impl ControlManager {
 		&self,
 		x: ConValueIntegerType,
 	) -> ConValueIntegerType {
-		(x - self.get_default()).abs()
+		(x - self.control_default()).abs()
 	}
 
 	pub fn set_step(&mut self, step: ConValueIntegerType) {
@@ -68,14 +68,14 @@ impl ControlManager {
 			return;
 		}
 
-		let min_deviation = self.abs_deviation_from_default(self.get_min());
-		let max_deviation = self.abs_deviation_from_default(self.get_max());
+		let min_deviation = self.abs_deviation_from_default(self.control_min());
+		let max_deviation = self.abs_deviation_from_default(self.control_max());
 		let total_range = min_deviation + max_deviation;
 		if step > total_range {
 			return;
 		}
 
-		let multiple_of_base_step = step % self.get_step() == 0;
+		let multiple_of_base_step = step % self.control_step() == 0;
 		if multiple_of_base_step {
 			self.step = step;
 		}
@@ -86,17 +86,20 @@ impl ControlDescription for ControlManager {
 	type ConType = ConValueIntegerType;
 	type ValueType = ConValueIntegerType;
 
-	fn get_id(&self) -> KnownCameraControl {
-		self.base.get_id()
+	fn control_id(&self) -> KnownCameraControl {
+		self.base.control_id()
 	}
 
-	fn set_value(&mut self, value: Self::ValueType) -> EdgeCamerasResult<()> {
-		self.base.set_value(value.into())?;
+	fn try_set_control_value(
+		&mut self,
+		value: Self::ValueType,
+	) -> EdgeCamerasResult<()> {
+		self.base.try_set_control_value(value.into())?;
 		self.value = value;
 		Ok(())
 	}
 
-	fn get_value(&self) -> Self::ValueType {
+	fn control_value(&self) -> Self::ValueType {
 		self.value
 	}
 }
@@ -104,42 +107,37 @@ impl ControlDescription for ControlManager {
 impl ControlDefault for ControlManager {
 	type DefaultType = Self::ConType;
 
-	fn get_default(&self) -> Self::DefaultType {
-		self.base.get_default()
-	}
-
-	fn reset_to_default(&mut self) {
-		self.set_value(self.get_default())
-			.expect("default value should never be invalid");
+	fn control_default(&self) -> Self::DefaultType {
+		self.base.control_default()
 	}
 }
 
 impl ControlStep for ControlManager {
 	type StepType = Self::ConType;
 
-	fn get_step(&self) -> Self::StepType {
-		self.base.get_step()
+	fn control_step(&self) -> Self::StepType {
+		self.base.control_step()
 	}
 
-	fn valid(&self, value: Self::StepType) -> bool {
-		(value - self.get_default()).abs() % self.get_step() == 0
-			|| (value - self.get_value()).abs() % self.get_step() == 0
+	fn validate(&self, value: Self::StepType) -> bool {
+		(value - self.control_default()).abs() % self.control_step() == 0
+			|| (value - self.control_value()).abs() % self.control_step() == 0
 	}
 }
 
 impl ControlMin for ControlManager {
 	type MinType = Self::ConType;
 
-	fn get_min(&self) -> Self::MinType {
-		self.base.get_min()
+	fn control_min(&self) -> Self::MinType {
+		self.base.control_min()
 	}
 }
 
 impl ControlMax for ControlManager {
 	type MaxType = Self::ConType;
 
-	fn get_max(&self) -> Self::MaxType {
-		self.base.get_max()
+	fn control_max(&self) -> Self::MaxType {
+		self.base.control_max()
 	}
 }
 
@@ -152,10 +150,10 @@ impl TryFrom<CamControl> for ControlManager {
 		};
 		Ok(Self {
 			base: control,
-			value: control.get_value().get_value(),
-			step: control.get_step(),
-			min: control.get_min(),
-			max: control.get_max(),
+			value: control.control_value().get(),
+			step: control.control_step(),
+			min: control.control_min(),
+			max: control.control_max(),
 			enable: true,
 			value_input: String::default(),
 			step_input: String::default(),
@@ -174,7 +172,7 @@ pub fn try_disable_auto_exposure(
 			id,
 		)));
 	};
-	let items = control.get_items();
+	let items = control.control_items();
 	let valid_entires: Vec<_> = items
 		.iter()
 		.filter(|&entry| {
@@ -187,8 +185,8 @@ pub fn try_disable_auto_exposure(
 	let &first = valid_entires
 		.first()
 		.ok_or(EdgeCamerasError::InvalidControlValue)?;
-	let mut value = control.get_value();
-	value.set_value(first.get_id());
+	let mut value = control.control_value();
+	*value.get_mut() = first.get_id();
 	#[expect(
 		clippy::unwrap_in_result,
 		reason = "value should be validated by control description"

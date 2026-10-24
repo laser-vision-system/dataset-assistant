@@ -6,8 +6,8 @@ use edge_cameras::{
 	camera_device::query_for_available_cameras,
 	controls::{
 		traits::{
-			ControlDefault as _, ControlDescription as _, ControlMax as _,
-			ControlMin as _, ControlStep as _,
+			ControlDefault as _, ControlDescription as _, ControlMin as _,
+			ControlStep as _,
 		},
 		values::ConValueIntegerType,
 	},
@@ -182,25 +182,25 @@ fn draw_for_control(
 	let current_label = "cur:".to_owned();
 	let valstrs = [
 		default_label.clone(),
-		manager.get_default().to_string(),
+		manager.control_default().to_string(),
 		current_label.clone(),
-		manager.get_value().to_string(),
+		manager.control_value().to_string(),
 	];
 	let minstrs = [
 		default_label.clone(),
-		manager.get_min().to_string(),
+		manager.control_min().to_string(),
 		current_label.clone(),
 		manager.min.to_string(),
 	];
 	let maxstrs = [
 		default_label.clone(),
-		manager.get_max().to_string(),
+		manager.control_min().to_string(),
 		current_label.clone(),
 		manager.max.to_string(),
 	];
 	let stepstrs = [
 		default_label.clone(),
-		manager.get_step().to_string(),
+		manager.control_step().to_string(),
 		current_label.clone(),
 		manager.step.to_string(),
 	];
@@ -229,7 +229,7 @@ fn draw_for_control(
 
 	ui.checkbox(&mut manager.enable, "Active");
 
-	let grid_label = manager.base.get_id().to_string();
+	let grid_label = manager.base.control_id().to_string();
 	let res = ui
 		.add_enabled_ui(manager.enable, |ui| {
 			input_grid_parsed_const(&grid_label, entries, ui)
@@ -250,7 +250,7 @@ fn draw_for_control(
 
 	match res[0] {
 		Some(new_val) => {
-			_ = manager.set_value(new_val);
+			_ = manager.try_set_control_value(new_val);
 			Some(new_val)
 		},
 		None => None,
@@ -264,7 +264,7 @@ pub fn draw_controls(
 	let res: Vec<_> = controls
 		.iter_mut()
 		.map(|control_ref| {
-			let name = control_ref.base.get_id().to_string();
+			let name = control_ref.base.control_id().to_string();
 			ui.collapsing(name, |ui| draw_for_control(ui, control_ref))
 				.body_returned
 				.flatten()
