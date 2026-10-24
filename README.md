@@ -1,5 +1,7 @@
 # Dataset Assistant
 
+A GUI program for the creation and management of datasets.
+
 Rapidly build a dataset for training. Groups images by position and intensity
 and sweeps through camera controls.
 
