@@ -144,13 +144,13 @@ mod tests {
 
 	#[test]
 	fn unavailable_path_file() {
-		let path = Path::new("./examples/dataset_assistant/saving/dataset.rs");
+		let path = Path::new("./src/dataset.rs");
 		assert_matches!(is_path_available(path), Err(why) if why.kind() == io::ErrorKind::NotADirectory);
 	}
 
 	#[test]
 	fn unavailable_path_not_empty() {
-		let path = Path::new("./examples/dataset_assistant/");
+		let path = Path::new("./src/");
 		assert_matches!(is_path_available(path), Err(why) if why.kind() == io::ErrorKind::DirectoryNotEmpty);
 	}
 
