@@ -291,13 +291,6 @@ impl State {
 		capture: Arc<Mutex<Capture>>,
 		external_laser: Option<f32>,
 	) -> Result<(), String> {
-		let dataset = self
-			.dataset
-			.as_mut()
-			.ok_or_else(|| String::from("No dataset present"))?;
-		let path = dataset.try_create_path().map_err(|why| {
-			format!("Failed to create path for collecting: {why}")
-		})?;
 		let camera = self
 			.camera
 			.as_mut()
@@ -305,6 +298,13 @@ impl State {
 
 		let control_sweeps = build_control_sweeps(&self.controls);
 		let fixed_controls = self.fixed_control_values.clone();
+		let dataset = self
+			.dataset
+			.as_mut()
+			.ok_or_else(|| String::from("No dataset present"))?;
+		let path = dataset.try_create_path().map_err(|why| {
+			format!("Failed to create path for collecting: {why}")
+		})?;
 		let saving = Box::new(Saving::start(
 			path,
 			control_sweeps,
