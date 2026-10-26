@@ -12,6 +12,10 @@ use std::{
 	sync::{
 		Arc,
 		Mutex,
+		atomic::{
+			AtomicBool,
+			Ordering,
+		},
 	},
 	thread,
 	time::Duration,
@@ -91,6 +95,7 @@ impl ImageMetadata {
 #[derive(Debug, Default)]
 pub struct Saving {
 	handle: Option<RunnerJoinHandle>,
+	cancel: Arc<AtomicBool>,
 }
 
 impl Saving {
@@ -108,6 +113,8 @@ impl Saving {
 		camera: Arc<Mutex<CameraDevice>>,
 		progress: Arc<Mutex<String>>,
 	) -> Self {
+		let cancel = Arc::new(AtomicBool::new(false));
+		let worker_cancel = Arc::clone(&cancel);
 		let run = move || {
 			// Technically impossible to get any other result.
 			let res = loop_all_permutations(
@@ -118,6 +125,7 @@ impl Saving {
 				&capture,
 				&camera,
 				&progress,
+				&worker_cancel,
 			)
 			.break_ok();
 			set_to_defaults(&mut control_sweeps, &camera);
@@ -131,6 +139,7 @@ impl Saving {
 			.unwrap();
 		Self {
 			handle: Some(handle),
+			cancel,
 		}
 	}
 }
@@ -139,11 +148,19 @@ impl Runner for Saving {
 	fn handle(&mut self) -> &mut Option<RunnerJoinHandle> {
 		&mut self.handle
 	}
+
+	fn cancel(&mut self) {
+		self.cancel.store(true, Ordering::Relaxed);
+	}
 }
 
 /// Iterate through every control permutation, saving the result.
 ///
 /// This function will only ever return [`ControlFlow::Break`].
+#[expect(
+	clippy::too_many_arguments,
+	reason = "Function has a big responsbility"
+)]
 fn loop_all_permutations(
 	destination: &Path,
 	control_sweeps: &mut [ControlSweep],
@@ -152,8 +169,12 @@ fn loop_all_permutations(
 	capture: &Mutex<Capture>,
 	camera: &Mutex<CameraDevice>,
 	progress: &Mutex<String>,
+	cancel: &AtomicBool,
 ) -> ControlFlow<()> {
 	loop {
+		if cancel.load(Ordering::Relaxed) {
+			return ControlFlow::Break(());
+		}
 		let mut val_strs = ImageMetadata::for_length(control_sweeps.len());
 		if let Some(external_intensity) = external_intensity {
 			let value_string = external_intensity.to_string();

@@ -135,6 +135,12 @@ impl State {
 		matches!(self.stage, Stage::Collecting(_))
 	}
 
+	pub fn cancel_saving(&mut self) {
+		if let Stage::Collecting(saving) = &mut self.stage {
+			saving.cancel();
+		}
+	}
+
 	pub fn is_complete(&self) -> bool {
 		self.camera_ready() && self.subset_ready()
 	}

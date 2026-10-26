@@ -12,6 +12,9 @@ pub type Result<T> = std::result::Result<T, RunnerError>;
 pub trait Runner {
 	fn handle(&mut self) -> &mut Option<RunnerJoinHandle>;
 
+	fn cancel(&mut self) {
+	}
+
 	fn is_done(&mut self) -> Option<RunnerResult> {
 		let handle = self.handle().take()?;
 

@@ -62,6 +62,7 @@ pub struct UIComponents {
 	laser_intensity_input: String,
 	live_feed: bool,
 	show_display: bool,
+	confirm_cancel: bool,
 	folder_dialog: FileDialog,
 	control_inputs: HashMap<KnownCameraControl, ControlInputState>,
 }
@@ -100,6 +101,10 @@ impl UIComponents {
 			&mut self.camera_position_input,
 			&mut self.laser_intensity_input,
 		)
+	}
+
+	pub fn confirm_cancel_mut(&mut self) -> &mut bool {
+		&mut self.confirm_cancel
 	}
 
 	pub fn open_folder_dialog(&mut self) {
@@ -365,6 +370,18 @@ pub fn draw_save_estimate(
 	ui.label(format!(
 		"Estimated duration: {hours}h {minutes}m {seconds}s (approx.)"
 	));
+}
+
+pub fn draw_cancel_confirmation(
+	ui: &mut egui::Ui,
+	confirmed: &mut bool,
+) -> bool {
+	ui.horizontal(|ui| {
+		ui.checkbox(confirmed, "Prime cancel button");
+		ui.add_enabled(*confirmed, egui::Button::new("Cancel saving"))
+			.clicked()
+	})
+	.inner
 }
 
 pub fn display_panel<F, R>(

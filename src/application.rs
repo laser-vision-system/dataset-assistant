@@ -176,6 +176,13 @@ impl DatasetAssistantApp {
 					ui,
 					&self.state.get_saving_progress(),
 				);
+				if user_interface::draw_cancel_confirmation(
+					ui,
+					self.ui.confirm_cancel_mut(),
+				) {
+					self.state.cancel_saving();
+					*self.ui.confirm_cancel_mut() = false;
+				}
 			});
 		});
 	}
