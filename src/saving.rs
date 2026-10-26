@@ -253,6 +253,7 @@ fn increment_controls(control_sweeps: &mut [ControlSweep]) -> ControlFlow<()> {
 	let should_continue = control_sweeps
 		.iter_mut()
 		.rev()
+		.filter(|sweep| sweep.is_enabled())
 		.any(|sweep| sweep.step().is_continue());
 
 	if should_continue {

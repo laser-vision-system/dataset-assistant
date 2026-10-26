@@ -254,7 +254,6 @@ pub fn extract_controls(
 pub fn build_control_sweeps(controls: &[ControlManager]) -> Vec<ControlSweep> {
 	controls
 		.iter()
-		.filter(|&control| control.enable)
 		.map(|control| control.clone().into())
 		.collect()
 }
