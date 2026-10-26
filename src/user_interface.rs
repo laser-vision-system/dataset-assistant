@@ -4,6 +4,7 @@ pub mod external_laser;
 
 use std::{
 	collections::HashMap,
+	path::PathBuf,
 	time::Duration,
 };
 
@@ -21,6 +22,7 @@ use edge_cameras::{
 	},
 };
 use eframe::egui;
+use egui_file_dialog::FileDialog;
 use nokhwa::utils::KnownCameraControl;
 
 use self::external_laser::ExternalLaser;
@@ -56,6 +58,11 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct UIComponents {
 	external_laser: ExternalLaser,
+	camera_position_input: String,
+	laser_intensity_input: String,
+	live_feed: bool,
+	show_display: bool,
+	folder_dialog: FileDialog,
 	control_inputs: HashMap<KnownCameraControl, ControlInputState>,
 }
 
@@ -68,6 +75,45 @@ struct ControlInputState {
 }
 
 impl UIComponents {
+	pub fn live_feed(&self) -> bool {
+		self.live_feed
+	}
+
+	pub fn live_feed_mut(&mut self) -> &mut bool {
+		&mut self.live_feed
+	}
+
+	pub fn show_display(&self) -> bool {
+		self.show_display
+	}
+
+	pub fn show_display_mut(&mut self) -> &mut bool {
+		&mut self.show_display
+	}
+
+	pub fn display_subset_entry_grid(
+		&mut self,
+		ui: &mut egui::Ui,
+	) -> Option<Subset> {
+		display_subset_entry_grid(
+			ui,
+			&mut self.camera_position_input,
+			&mut self.laser_intensity_input,
+		)
+	}
+
+	pub fn open_folder_dialog(&mut self) {
+		self.folder_dialog.pick_directory();
+	}
+
+	pub fn update_folder_dialog(&mut self, ui: &mut egui::Ui) {
+		self.folder_dialog.update(ui);
+	}
+
+	pub fn take_selected_folder(&mut self) -> Option<PathBuf> {
+		self.folder_dialog.take_picked()
+	}
+
 	pub fn query_external_laser(&mut self, ui: &mut egui::Ui) -> Option<f32> {
 		ui.horizontal(|ui| {
 			self.external_laser.clear_button(ui);

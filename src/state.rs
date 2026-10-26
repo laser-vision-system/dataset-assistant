@@ -1,8 +1,11 @@
 #![expect(clippy::unwrap_used, reason = "Lazy developer")]
 
-use std::sync::{
-	Arc,
-	Mutex,
+use std::{
+	path::PathBuf,
+	sync::{
+		Arc,
+		Mutex,
+	},
 };
 
 use edge_cameras::{
@@ -19,7 +22,6 @@ use eframe::egui::{
 	self,
 	TextBuffer as _,
 };
-use egui_file_dialog::FileDialog;
 
 use crate::{
 	audio::Audio,
@@ -68,15 +70,6 @@ pub struct State {
 	/// Transient.
 	should_build_csv: Option<u8>,
 
-	/// Set externally, read locally; glorified parameter input.
-	/// Remotely polls button input.
-	/// Coupled to [`file_dialog`](FileDialog).
-	/// Semi-transient.
-	chose_folder: bool,
-	/// Only accessed mutably. Uses chose folder to produce a dataset.
-	/// Cohesion with [`dataset`](Dataset).
-	/// Persistent.
-	file_dialog: FileDialog,
 	/// Created by file dialog and used to set subset, try for collecting, or
 	/// build csv. Only set back to None when selecting an invalid path.
 	/// Deeply coupled [here](self).
@@ -87,11 +80,6 @@ pub struct State {
 	/// Persistent.
 	dataset_path_label: String,
 
-	/// These two are only ever used in the UI for the subset grid.
-	/// Coupled to [`Subset`].
-	/// Persistent.
-	camera_position_input: String,
-	laser_intensity_input: String,
 	/// Set when adding subset, only diplayed once.
 	/// Coupled to [here](self) and [`dataset`](Dataset)/[`Subset`].
 	/// Persistent.
@@ -118,17 +106,6 @@ pub struct State {
 	/// Coupled to [`camera`](CameraDevice) and [`controls`](ControlManager).
 	/// Transient.
 	requested_controls: Option<Vec<Option<ConValueIntegerType>>>,
-
-	/// Toggled in one placed and use extensively in app and ui.
-	/// Locally guards reading from camera.
-	/// Lightly coupled to [`camera`](CameraDevice).
-	/// Persistent.
-	live_feed: bool,
-
-	/// Set and used externally. Never used locally.
-	/// Intended to be used with live feed.
-	/// Peristent.
-	show_display: bool,
 
 	/// Set in saving pulse and used in UI draw collecting.
 	/// Coupled to [here](self) and [`Saving`].
@@ -219,10 +196,6 @@ impl State {
 		};
 	}
 
-	pub fn set_chose_folder(&mut self, state: bool) {
-		self.chose_folder = state;
-	}
-
 	pub fn set_should_build_csv(&mut self, state: Option<u8>) {
 		self.should_build_csv = state;
 	}
@@ -246,35 +219,12 @@ impl State {
 		self.saving_progress_label.lock().unwrap().clone()
 	}
 
-	pub fn get_show_display(&mut self) -> bool {
-		self.show_display
-	}
-
-	pub fn get_show_display_mut(&mut self) -> &mut bool {
-		&mut self.show_display
-	}
-
-	pub fn get_live_feed(&self) -> bool {
-		self.live_feed
-	}
-
-	pub fn get_live_feed_mut(&mut self) -> &mut bool {
-		&mut self.live_feed
-	}
-
 	pub fn get_dataset_path_label(&self) -> &str {
 		&self.dataset_path_label
 	}
 
 	pub fn get_subset_path_label(&self) -> &str {
 		&self.subset_path_label
-	}
-
-	pub fn get_subset_inputs(&mut self) -> (&mut String, &mut String) {
-		(
-			&mut self.camera_position_input,
-			&mut self.laser_intensity_input,
-		)
 	}
 
 	pub fn get_camera_id_label(&self) -> &str {
@@ -334,7 +284,6 @@ impl State {
 	pub fn execute_for_preparation(
 		&mut self,
 		capture: &mut Capture,
-		ui: &mut egui::Ui,
 		request_capture: bool,
 	) {
 		if !self.current_state_is_preparation() {
@@ -349,12 +298,27 @@ impl State {
 
 		if let Some(camera) = self.camera.clone() {
 			self.prep_cam_controls(&camera);
-			_ = self
-				.prep_capture(capture, request_capture, &camera)
+			_ = Self::prep_capture(capture, request_capture, &camera)
 				.inspect_err(|why| eprintln!("{why}"));
 		}
+	}
 
-		self.prep_file_dialog(ui);
+	pub fn select_dataset_folder(&mut self, path: PathBuf) {
+		match Dataset::try_from(path) {
+			Ok(dataset) => {
+				let new_label = if dataset.is_empty() {
+					format!("{DIRECTORY_SELECTED_LABEL}: {dataset}/")
+				} else {
+					format!("{NON_EMPTY_DIRECTORY_SELECTED_LABEL}: {dataset}/")
+				};
+				self.dataset_path_label.replace_with(&new_label);
+				self.dataset = Some(dataset);
+			},
+			Err(why) => {
+				self.dataset_path_label
+					.replace_with(&format!("{FAILED_DIRECTORY_LABEL}: {why}"));
+			},
+		}
 	}
 
 	fn prep_build_csv(&mut self) -> bool {
@@ -414,12 +378,11 @@ impl State {
 	}
 
 	fn prep_capture(
-		&mut self,
 		capture: &mut Capture,
 		request_capture: bool,
 		camera: &Mutex<CameraDevice>,
 	) -> Result<(), String> {
-		if request_capture || self.live_feed {
+		if request_capture {
 			let mut cam = camera
 				.lock()
 				.map_err(|why| format!("Unlocking camera failed: {why}"))?;
@@ -432,37 +395,6 @@ impl State {
 			capture.store_image(&image);
 		}
 		Ok(())
-	}
-
-	fn prep_file_dialog(&mut self, ui: &mut egui::Ui) {
-		if self.chose_folder {
-			self.file_dialog.pick_directory();
-		}
-
-		self.file_dialog.update(ui);
-
-		if let Some(path) = self.file_dialog.take_picked() {
-			let maybe_dataset = Dataset::try_from(path);
-			match maybe_dataset {
-				Ok(dataset) => {
-					let new_label = if dataset.is_empty() {
-						format!("{DIRECTORY_SELECTED_LABEL}: {dataset}/")
-					} else {
-						format!(
-							"{NON_EMPTY_DIRECTORY_SELECTED_LABEL}: {dataset}/"
-						)
-					};
-					self.dataset_path_label.replace_with(&new_label);
-					self.dataset = Some(dataset);
-				},
-				Err(why) => {
-					//
-					self.dataset_path_label.replace_with(&format!(
-						"{FAILED_DIRECTORY_LABEL}: {why}"
-					));
-				},
-			}
-		}
 	}
 }
 
