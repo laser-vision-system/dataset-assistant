@@ -61,14 +61,26 @@ pub struct ControlManager {
 }
 
 impl ControlManager {
+	/// Set the minimum value that the sweep will start at.
 	pub fn set_min(&mut self, min: ConValueIntegerType) {
-		if self.control_min() <= min && min < self.max {
+		if min <= self.max
+			&& self.control_min() <= min
+			&& (self.control_default().saturating_sub(min))
+				.checked_rem_euclid(self.control_step())
+				.is_some_and(|x| x == 0)
+		{
 			self.min = min;
 		}
 	}
 
+	/// Set the maximum value that the sweep is allowed to reach.
 	pub fn set_max(&mut self, max: ConValueIntegerType) {
-		if self.min < max && max <= self.control_max() {
+		if self.min <= max
+			&& max <= self.control_max()
+			&& (self.control_default().saturating_sub(max))
+				.checked_rem_euclid(self.control_step())
+				.is_some_and(|x| x == 0)
+		{
 			self.max = max;
 		}
 	}
