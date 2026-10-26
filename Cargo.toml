@@ -13,10 +13,9 @@ package.version = "0.1.1"
 edge-core = { path = "./edge/crates/edge-core" }
 edge-vision = { path = "./edge/crates/edge-vision" }
 api = { path = "./edge/submodules/api" }
-nokhwa = { path = "./edge/submodules/nokhwa", features = [
+nokhwa = { path = "./edge/submodules/nokhwa", default-features = false, features = [
 	"serialize",
 	"input-native",
-	"runner",
 ] }
 
 mutually_exclusive_features = "0.1"
@@ -42,27 +41,10 @@ edge-core.workspace = true
 eframe = { version = "0.36", features = [
 	"glow"
 ] }
-egui_extras = { version = "0.36", features = [
-	"image"
-] }
+egui_extras = { version = "0.36", default-features = false }
 egui-file-dialog = { version = "0.15", default-features = false }
-image = { version = "0.25", default-features = false, features = [
-	"rayon",
-	"jpeg",
-	"png",
-	"gif",
-	"webp",
-	"avif"
-] }
-lab = "0.11"
-nokhwa = { path = "./edge/submodules/nokhwa", default-features = false, features = [
-	"input-native",
-] }
-rayon = "1"
-reqwest = { version = "0.13", features = [
-	"json",
-	"multipart"
-] }
+image.workspace = true
+nokhwa.workspace = true
 rodio = "0.22"
 serde = { version = "1" , features = [
 	"derive"
