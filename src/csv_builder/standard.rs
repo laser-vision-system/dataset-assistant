@@ -59,7 +59,7 @@ impl Runner for Builder {
 }
 
 type MetadataList = Vec<MetadataField>;
-type IntType = u32;
+type IntType = i64;
 type FloatType = f32;
 
 /// Represents the types of values that the metadata field might have.
