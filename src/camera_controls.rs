@@ -240,6 +240,9 @@ pub fn extract_controls(
 		{
 			continue;
 		}
+		if !matches!(&cam_control, CamControl::IntegerRange(_)) {
+			continue;
+		}
 		let control = ControlManager::try_from(cam_control)
 			.expect("camera control has an unsupported value description");
 		variants.push(control);
