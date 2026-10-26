@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use rodio::{
 	MixerDeviceSink,
-	Source,
+	Source as _,
 };
 
 #[derive(Debug)]

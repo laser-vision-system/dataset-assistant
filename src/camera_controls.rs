@@ -3,7 +3,7 @@ use std::time::Duration;
 use edge_cameras::{
 	camera_device::{
 		CameraDevice,
-		CameraLike,
+		CameraLike as _,
 	},
 	controls::{
 		descriptions::{

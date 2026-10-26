@@ -11,7 +11,7 @@ use std::{
 use edge_cameras::{
 	camera_device::{
 		CameraDevice,
-		CameraLike,
+		CameraLike as _,
 	},
 	controls::{
 		traits::ControlDescription as _,
