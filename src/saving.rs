@@ -281,3 +281,41 @@ fn set_to_defaults(
 		sweep_types.apply_default(&mut camera);
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use edge_cameras::controls::{
+		descriptions::IntegerRangeControl,
+		values::ConValueInteger,
+	};
+	use nokhwa::utils::KnownCameraControl;
+
+	use super::*;
+	use crate::camera_controls::ControlManager;
+
+	fn control(enable: bool) -> ControlManager {
+		let base = IntegerRangeControl::new(
+			KnownCameraControl::Brightness,
+			ConValueInteger::from(0),
+			0,
+			1,
+			0,
+			1,
+		);
+		ControlManager {
+			base,
+			value: 0,
+			step: 1,
+			min: 0,
+			max: 1,
+			enable,
+		}
+	}
+
+	#[test]
+	fn disabled_sweeps_do_not_block_enabled_sweep_completion() {
+		let mut sweeps = vec![control(false).into(), control(true).into()];
+		assert!(increment_controls(&mut sweeps).is_continue());
+		assert!(!increment_controls(&mut sweeps).is_continue());
+	}
+}
