@@ -251,6 +251,53 @@ pub fn extract_controls(
 	variants
 }
 
+/// Extract current values for camera controls not represented by integer
+/// range sweeps.
+pub fn extract_fixed_control_values(
+	camera: &mut CameraDevice,
+	swept_controls: &[KnownCameraControl],
+) -> Vec<(String, String)> {
+	let Ok(controls) = camera.get_controls() else {
+		return Vec::new();
+	};
+	controls
+		.into_inner()
+		.into_iter()
+		.filter(|(id, control)| {
+			!(matches!(control, CamControl::None)
+				|| swept_controls.contains(id))
+		})
+		.flat_map(|(id, control)| {
+			[
+				control
+					.try_display_control_value()
+					.map(|label| (id.to_string(), label)),
+				control
+					.try_display_control_default()
+					.map(|label| (format!("{id}-default"), label)),
+				control
+					.try_display_control_min()
+					.map(|label| (format!("{id}-min"), label)),
+				control
+					.try_display_control_max()
+					.map(|label| (format!("{id}-max"), label)),
+				control
+					.try_display_control_step()
+					.map(|label| (format!("{id}-step"), label)),
+				control
+					.try_display_control_possible()
+					.map(|label| (format!("{id}-possible"), label)),
+				control
+					.try_display_control_items()
+					.map(|label| (format!("{id}-items"), label)),
+			]
+			.into_iter()
+			.flatten()
+			.collect::<Vec<_>>()
+		})
+		.collect()
+}
+
 pub fn build_control_sweeps(controls: &[ControlManager]) -> Vec<ControlSweep> {
 	controls
 		.iter()

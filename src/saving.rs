@@ -102,6 +102,7 @@ impl Saving {
 	pub fn start(
 		destination: PathBuf,
 		mut control_sweeps: Vec<ControlSweep>,
+		fixed_controls: Vec<(String, String)>,
 		external_intensity: Option<f32>,
 		capture: Arc<Mutex<Capture>>,
 		camera: Arc<Mutex<CameraDevice>>,
@@ -112,6 +113,7 @@ impl Saving {
 			let res = loop_all_permutations(
 				&destination,
 				&mut control_sweeps,
+				&fixed_controls,
 				external_intensity,
 				&capture,
 				&camera,
@@ -145,6 +147,7 @@ impl Runner for Saving {
 fn loop_all_permutations(
 	destination: &Path,
 	control_sweeps: &mut [ControlSweep],
+	fixed_controls: &[(String, String)],
 	external_intensity: Option<f32>,
 	capture: &Mutex<Capture>,
 	camera: &Mutex<CameraDevice>,
@@ -156,6 +159,11 @@ fn loop_all_permutations(
 			let value_string = external_intensity.to_string();
 			val_strs
 				.append_all("externalLaserIntensity", &value_string)
+				.expect("Writing into the value strings should never fail");
+		}
+		for (label, value) in fixed_controls {
+			val_strs
+				.append_detailed(label, value)
 				.expect("Writing into the value strings should never fail");
 		}
 

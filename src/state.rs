@@ -27,6 +27,7 @@ use crate::{
 		ControlManager,
 		build_control_sweeps,
 		extract_controls,
+		extract_fixed_control_values,
 		try_disable_auto_exposure,
 	},
 	capture::Capture,
@@ -110,6 +111,7 @@ pub struct State {
 	/// for collecting. Coupled to [`camera`](CameraDevice).
 	/// Semi-persistent.
 	controls: Vec<ControlManager>,
+	fixed_control_values: Vec<(String, String)>,
 	/// Set externally, consumed when read; glorified parameter input.
 	/// Coupled to [`camera`](CameraDevice) and [`controls`](ControlManager).
 	/// Transient.
@@ -202,6 +204,13 @@ impl State {
 				let skip_exposure =
 					try_disable_auto_exposure(&mut camera).is_err();
 				self.controls = extract_controls(&mut camera, skip_exposure);
+				let swept_controls: Vec<_> = self
+					.controls
+					.iter()
+					.map(ControlManager::control_id)
+					.collect();
+				self.fixed_control_values =
+					extract_fixed_control_values(&mut camera, &swept_controls);
 				Some(Arc::new(Mutex::new(camera)))
 			},
 			Err(_) => None,
@@ -295,9 +304,11 @@ impl State {
 			.ok_or_else(|| String::from("No camera present"))?;
 
 		let control_sweeps = build_control_sweeps(&self.controls);
+		let fixed_controls = self.fixed_control_values.clone();
 		let saving = Box::new(Saving::start(
 			path,
 			control_sweeps,
+			fixed_controls,
 			external_laser,
 			capture,
 			camera.clone(),
@@ -358,6 +369,7 @@ impl State {
 			} else {
 				self.camera = None;
 				self.controls = Vec::new();
+				self.fixed_control_values = Vec::new();
 				self.requested_controls.take();
 				self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
 			}
