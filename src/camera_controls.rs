@@ -55,11 +55,6 @@ pub struct ControlManager {
 	pub min: ConValueIntegerType,
 	pub max: ConValueIntegerType,
 	pub enable: bool,
-	// These have to remain public because of mutable borrowing rules.
-	pub value_input: String,
-	pub step_input: String,
-	pub min_input: String,
-	pub max_input: String,
 }
 
 impl ControlManager {
@@ -186,10 +181,6 @@ impl TryFrom<CamControl> for ControlManager {
 			min: control.control_min(),
 			max: control.control_max(),
 			enable: true,
-			value_input: String::default(),
-			step_input: String::default(),
-			min_input: String::default(),
-			max_input: String::default(),
 		})
 	}
 }

@@ -2,7 +2,10 @@
 
 pub mod external_laser;
 
-use std::time::Duration;
+use std::{
+	collections::HashMap,
+	time::Duration,
+};
 
 use edge_cameras::{
 	camera_device::query_for_available_cameras,
@@ -18,6 +21,7 @@ use edge_cameras::{
 	},
 };
 use eframe::egui;
+use nokhwa::utils::KnownCameraControl;
 
 use self::external_laser::ExternalLaser;
 use crate::{
@@ -52,6 +56,15 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct UIComponents {
 	external_laser: ExternalLaser,
+	control_inputs: HashMap<KnownCameraControl, ControlInputState>,
+}
+
+#[derive(Debug, Default)]
+struct ControlInputState {
+	value: String,
+	step: String,
+	min: String,
+	max: String,
 }
 
 impl UIComponents {
@@ -61,6 +74,25 @@ impl UIComponents {
 			self.external_laser.external_intensity_entry(ui);
 		});
 		self.external_laser.get_value()
+	}
+
+	pub fn draw_controls(
+		&mut self,
+		ui: &mut egui::Ui,
+		controls: &mut Vec<&mut ControlManager>,
+	) -> Option<Vec<Option<ConValueIntegerType>>> {
+		let res: Vec<_> = controls
+			.iter_mut()
+			.map(|control| {
+				let id = control.base.control_id();
+				let input = self.control_inputs.entry(id).or_default();
+				let name = id.to_string();
+				ui.collapsing(name, |ui| draw_for_control(ui, control, input))
+					.body_returned
+					.flatten()
+			})
+			.collect();
+		res.iter().any(Option::is_some).then_some(res)
 	}
 }
 
@@ -194,6 +226,7 @@ pub fn display_subset_entry_grid(
 fn draw_for_control(
 	ui: &mut egui::Ui,
 	manager: &mut ControlManager,
+	input: &mut ControlInputState,
 ) -> Option<ConValueIntegerType> {
 	let default_label = "def:".to_owned();
 	let current_label = "cur:".to_owned();
@@ -225,22 +258,22 @@ fn draw_for_control(
 		OnDemandTextEntryBox::new(
 			String::from("Value:"),
 			valstrs,
-			&mut manager.value_input,
+			&mut input.value,
 		),
 		OnDemandTextEntryBox::new(
 			String::from("Min:"),
 			minstrs,
-			&mut manager.min_input,
+			&mut input.min,
 		),
 		OnDemandTextEntryBox::new(
 			String::from("Max:"),
 			maxstrs,
-			&mut manager.max_input,
+			&mut input.max,
 		),
 		OnDemandTextEntryBox::new(
 			String::from("Step:"),
 			stepstrs,
-			&mut manager.step_input,
+			&mut input.step,
 		),
 	];
 
@@ -272,23 +305,6 @@ fn draw_for_control(
 		},
 		None => None,
 	}
-}
-
-pub fn draw_controls(
-	ui: &mut egui::Ui,
-	controls: &mut Vec<&mut ControlManager>,
-) -> Option<Vec<Option<ConValueIntegerType>>> {
-	let res: Vec<_> = controls
-		.iter_mut()
-		.map(|control_ref| {
-			let name = control_ref.base.control_id().to_string();
-			ui.collapsing(name, |ui| draw_for_control(ui, control_ref))
-				.body_returned
-				.flatten()
-		})
-		.collect();
-
-	res.iter().any(Option::is_some).then_some(res)
 }
 
 pub fn save_button(ui: &mut egui::Ui, enabled: bool) -> bool {

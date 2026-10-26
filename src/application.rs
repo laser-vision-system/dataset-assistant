@@ -125,7 +125,7 @@ impl DatasetAssistantApp {
 						egui::CollapsingHeader::new("Controls:")
 							.default_open(false)
 							.show(ui, |ui| {
-								user_interface::draw_controls(ui, &mut controls)
+								self.ui.draw_controls(ui, &mut controls)
 							})
 							.body_returned;
 					self.state
