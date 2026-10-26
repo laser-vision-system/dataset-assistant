@@ -190,9 +190,7 @@ pub fn try_disable_auto_exposure(
 ) -> EdgeCamerasResult<()> {
 	let id = KnownCameraControl::AutoExposure;
 	let CamControl::Menu(control) = camera.get_control(id)? else {
-		return Err(EdgeCamerasError::from(EdgeCamerasError::GetControlType(
-			id,
-		)));
+		return Err(EdgeCamerasError::GetControlType(id));
 	};
 	let items = control.control_items();
 	let valid_entires: Vec<_> = items
