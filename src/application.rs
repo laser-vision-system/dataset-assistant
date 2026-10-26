@@ -141,7 +141,16 @@ impl DatasetAssistantApp {
 			ui.add_enabled_ui(
 				self.state.current_state_is_preparation(),
 				|ui| {
+					// TODO: Move this logic out of this section.
 					let res = self.ui.query_external_laser(ui);
+					let (permutations, estimate) = self.state.saving_estimate();
+
+					user_interface::draw_save_estimate(
+						ui,
+						permutations,
+						estimate,
+					);
+
 					if user_interface::save_button(ui, self.state.is_complete())
 					{
 						_ = self

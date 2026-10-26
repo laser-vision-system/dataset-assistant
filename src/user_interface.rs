@@ -2,6 +2,8 @@
 
 pub mod external_laser;
 
+use std::time::Duration;
+
 use edge_cameras::{
 	camera_device::query_for_available_cameras,
 	controls::{
@@ -297,6 +299,21 @@ pub fn save_button(ui: &mut egui::Ui, enabled: bool) -> bool {
 
 pub fn draw_collecting(ui: &mut egui::Ui, progress: &str) {
 	ui.label(progress);
+}
+
+pub fn draw_save_estimate(
+	ui: &mut egui::Ui,
+	permutations: u128,
+	duration: Duration,
+) {
+	let seconds = duration.as_secs();
+	let hours = seconds.div_euclid(3_600);
+	let minutes = (seconds % 3_600).div_euclid(60);
+	let seconds = seconds % 60;
+	ui.label(format!("Permutations: {permutations}"));
+	ui.label(format!(
+		"Estimated duration: {hours}h {minutes}m {seconds}s (approx.)"
+	));
 }
 
 pub fn display_panel<F, R>(

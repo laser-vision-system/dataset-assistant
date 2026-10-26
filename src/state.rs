@@ -26,8 +26,10 @@ use crate::{
 	camera_controls::{
 		ControlManager,
 		build_control_sweeps,
+		estimate_save_duration,
 		extract_controls,
 		extract_fixed_control_values,
+		total_permutations,
 		try_disable_auto_exposure,
 	},
 	capture::Capture,
@@ -281,6 +283,13 @@ impl State {
 
 	pub fn get_controls(&mut self) -> Vec<&mut ControlManager> {
 		self.controls.iter_mut().collect()
+	}
+
+	pub fn saving_estimate(&self) -> (u128, std::time::Duration) {
+		(
+			total_permutations(&self.controls),
+			estimate_save_duration(&self.controls),
+		)
 	}
 }
 

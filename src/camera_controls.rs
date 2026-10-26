@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use edge_cameras::{
 	camera_device::{
 		CameraDevice,
@@ -303,4 +305,81 @@ pub fn build_control_sweeps(controls: &[ControlManager]) -> Vec<ControlSweep> {
 		.iter()
 		.map(|control| control.clone().into())
 		.collect()
+}
+
+/// Return the number of capture permutations represented by the controls.
+pub fn total_permutations(controls: &[ControlManager]) -> u128 {
+	controls
+		.iter()
+		.filter(|control| control.enable)
+		.map(|control| {
+			let distance = control.max - control.min;
+			let count = distance.div_euclid(control.step) + 1;
+			u128::try_from(count).unwrap_or(u128::MAX)
+		})
+		.fold(1, u128::saturating_mul)
+}
+
+/// Estimate the save duration from sweep count and exposure value.
+///
+/// The estimate treats exposure values as milliseconds and includes the
+/// fixed camera settling delay. Backends may use different exposure units.
+pub fn estimate_save_duration(controls: &[ControlManager]) -> Duration {
+	let exposure_ms = controls
+		.iter()
+		.find(|control| {
+			control.control_id() == KnownCameraControl::ExposureAbsolute
+		})
+		.map_or(0, |control| {
+			let value = if control.enable {
+				control.max
+			} else {
+				control.control_default()
+			};
+			u64::try_from(value.max(0)).unwrap_or(u64::MAX)
+		});
+	let per_capture_ms = exposure_ms.saturating_add(100);
+	let permutation_count =
+		u64::try_from(total_permutations(controls)).unwrap_or(u64::MAX);
+	Duration::from_millis(per_capture_ms.saturating_mul(permutation_count))
+}
+
+#[cfg(test)]
+mod tests {
+	use edge_cameras::controls::{
+		descriptions::IntegerRangeControl,
+		values::ConValueInteger,
+	};
+	use nokhwa::utils::KnownCameraControl;
+
+	use super::*;
+
+	fn control(min: i64, max: i64, step: i64, enable: bool) -> ControlManager {
+		let base = IntegerRangeControl::new(
+			KnownCameraControl::Brightness,
+			ConValueInteger::from(min),
+			min,
+			step,
+			min,
+			max,
+		);
+		ControlManager {
+			base,
+			value: min,
+			step,
+			min,
+			max,
+			enable,
+		}
+	}
+
+	#[test]
+	fn permutation_count_includes_pinned_and_ignores_disabled_controls() {
+		let controls = [
+			control(4, 4, 1, true),
+			control(0, 8, 2, true),
+			control(0, 10, 1, false),
+		];
+		assert_eq!(total_permutations(&controls), 5);
+	}
 }
