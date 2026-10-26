@@ -43,12 +43,11 @@ impl DatasetAssistantApp {
 
 		ui.spacing_mut().indent_ends_with_horizontal_line = true;
 
-		let requested_capture = ui
-			.add_enabled_ui(self.state.current_state_is_preparation(), |ui| {
-				self.directory_section(ui);
-				self.camera_section(ui)
-			})
-			.inner;
+		ui.add_enabled_ui(self.state.current_state_is_preparation(), |ui| {
+			self.directory_section(ui);
+		});
+
+		let requested_capture = self.camera_section(ui);
 
 		self.save_section(ui);
 
@@ -91,31 +90,45 @@ impl DatasetAssistantApp {
 
 	fn camera_section(&mut self, ui: &mut egui::Ui) -> bool {
 		user_interface::add_subsection(ui, "Camera", |ui| {
-			ui.add_enabled_ui(!self.state.get_live_feed(), |ui| {
-				if let Some(selection) = user_interface::camera_selection(
-					ui,
-					self.state.get_camera_id_label(),
-				) {
-					self.state.set_requested_cam_index(selection);
-				}
-			});
+			ui.add_enabled_ui(
+				!self.state.get_live_feed()
+					&& self.state.current_state_is_preparation(),
+				|ui| {
+					if let Some(selection) = user_interface::camera_selection(
+						ui,
+						self.state.get_camera_id_label(),
+					) {
+						self.state.set_requested_cam_index(selection);
+					}
+				},
+			);
+
+			ui.toggle_value(
+				self.state.show_display_mut(),
+				"Show display panel",
+			);
 
 			ui.separator();
 
 			let requested_capture = ui
 				.add_enabled_ui(self.state.camera_ready(), |ui| {
-					ui.toggle_value(
-						self.state.get_show_display_mut(),
-						"Show display panel",
-					);
-					user_interface::capture_controls(
-						ui,
-						self.state.get_live_feed_mut(),
-					)
+					ui.horizontal(|ui| {
+						let btn_result = ui.add_enabled(
+							!self.state.get_live_feed()
+								&& self.state.current_state_is_preparation(),
+							egui::Button::new("Preview capture"),
+						);
+						ui.checkbox(self.state.get_live_feed_mut(), "Live feed");
+						btn_result
+					})
+					.inner
+					.clicked()
 				})
 				.inner;
 
-			if self.state.camera_ready() {
+			if self.state.camera_ready()
+				&& self.state.current_state_is_preparation()
+			{
 				let mut controls = self.state.get_controls();
 				if controls.is_empty() {
 					ui.label("No controls...");

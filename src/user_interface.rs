@@ -184,17 +184,6 @@ pub fn build_csv_selection(ui: &mut egui::Ui) -> Option<Option<u8>> {
 	.inner
 }
 
-pub fn capture_controls(ui: &mut egui::Ui, live_feed: &mut bool) -> bool {
-	ui.horizontal(|ui| {
-		let btn_result =
-			ui.add_enabled(!*live_feed, egui::Button::new("Preview capture"));
-		ui.checkbox(live_feed, "Live feed");
-		btn_result
-	})
-	.inner
-	.clicked()
-}
-
 pub fn display_subset_entry_grid(
 	ui: &mut egui::Ui,
 	camera_position_input: &mut String,
