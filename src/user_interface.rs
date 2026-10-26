@@ -8,6 +8,7 @@ use edge_cameras::{
 		traits::{
 			ControlDefault as _,
 			ControlDescription as _,
+			ControlMax as _,
 			ControlMin as _,
 			ControlStep as _,
 		},
@@ -208,7 +209,7 @@ fn draw_for_control(
 	];
 	let maxstrs = [
 		default_label.clone(),
-		manager.control_min().to_string(),
+		manager.control_max().to_string(),
 		current_label.clone(),
 		manager.max.to_string(),
 	];
