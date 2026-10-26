@@ -64,19 +64,27 @@ impl ImageMetadata {
 		}
 	}
 
-	pub fn append_sweep(&mut self, sweep: &ControlSweep) {
-		writeln!(self.detailed, "{sweep}")
-			.expect("Writing into the value strings should never fail");
+	pub fn append_sweep(&mut self, sweep: &ControlSweep) -> std::fmt::Result {
+		writeln!(self.detailed, "{sweep}")?;
 		let value = sweep.to_control_type_value().get().to_string();
 		write!(self.short, "_{value}")
-			.expect("Writing into the value strings should never fail");
 	}
 
-	pub fn append(&mut self, label: &str, value: &str) {
-		writeln!(self.detailed, "{label}: {value}")
-			.expect("Writing into the value strings should never fail");
+	pub fn append_all(&mut self, label: &str, value: &str) -> std::fmt::Result {
+		self.append_detailed(label, value)?;
+		self.append_short(value)
+	}
+
+	pub fn append_short(&mut self, value: &str) -> std::fmt::Result {
 		write!(self.short, "_{value}")
-			.expect("Writing into the value strings should never fail");
+	}
+
+	pub fn append_detailed(
+		&mut self,
+		label: &str,
+		value: &str,
+	) -> std::fmt::Result {
+		writeln!(self.detailed, "{label}: {value}")
 	}
 }
 
@@ -146,7 +154,9 @@ fn loop_all_permutations(
 		let mut val_strs = ImageMetadata::for_length(control_sweeps.len());
 		if let Some(external_intensity) = external_intensity {
 			let value_string = external_intensity.to_string();
-			val_strs.append("externalLaserIntensity", &value_string);
+			val_strs
+				.append_all("externalLaserIntensity", &value_string)
+				.expect("Writing into the value strings should never fail");
 		}
 
 		let sweeps = make_owned_collection(control_sweeps);
@@ -190,7 +200,9 @@ fn update_cam_controls(
 
 	call_on_each(control_sweeps, |sweep| {
 		sweep.apply_current(&mut camera);
-		val_strs.append_sweep(sweep);
+		val_strs
+			.append_sweep(sweep)
+			.expect("Writing into the value strings should never fail");
 	});
 }
 
