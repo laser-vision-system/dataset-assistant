@@ -212,7 +212,7 @@ where
 	F: FnMut(&mut ControlSweep),
 {
 	for sweep in control_sweeps {
-		func(sweep)
+		func(sweep);
 	}
 }
 
