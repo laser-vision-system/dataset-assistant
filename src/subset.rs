@@ -6,7 +6,10 @@
 //! Each subset is unique, so a new one cannot be created with the same values
 //! as one that already exists.
 
-use std::{fmt::Display, path::PathBuf};
+use std::{
+	fmt::Display,
+	path::PathBuf,
+};
 
 #[derive(Clone, Debug, Default)]
 pub struct Subset {

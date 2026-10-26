@@ -5,14 +5,23 @@ use std::{
 	fs::File,
 	io::Write as _,
 	ops::ControlFlow,
-	path::{Path, PathBuf},
-	sync::{Arc, Mutex},
+	path::{
+		Path,
+		PathBuf,
+	},
+	sync::{
+		Arc,
+		Mutex,
+	},
 	thread,
 	time::Duration,
 };
 
 use edge_cameras::{
-	camera_device::{CameraDevice, CameraLike},
+	camera_device::{
+		CameraDevice,
+		CameraLike,
+	},
 	controls::traits::ControlValue as _,
 };
 use edge_core::image::Image;
@@ -21,8 +30,16 @@ use image::RgbImage;
 
 use crate::{
 	capture::Capture,
-	runner::{Runner, RunnerError, RunnerJoinHandle},
-	settings::{FILE_NAME_BASE, IMAGE_EXTENSION, META_EXTENSION},
+	runner::{
+		Runner,
+		RunnerError,
+		RunnerJoinHandle,
+	},
+	settings::{
+		FILE_NAME_BASE,
+		IMAGE_EXTENSION,
+		META_EXTENSION,
+	},
 	sweep::ControlSweep,
 };
 

@@ -1,6 +1,9 @@
 //! Execute an operation on a separate thread.
 
-use std::{error::Error, fmt};
+use std::{
+	error::Error,
+	fmt,
+};
 
 pub type RunnerJoinHandle = std::thread::JoinHandle<Result<()>>;
 pub type Result<T> = std::result::Result<T, RunnerError>;
@@ -64,4 +67,5 @@ impl fmt::Display for RunnerError {
 	}
 }
 
-impl Error for RunnerError {}
+impl Error for RunnerError {
+}

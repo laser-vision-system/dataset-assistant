@@ -1,18 +1,32 @@
 #![expect(clippy::unwrap_used, reason = "Lazy developer")]
 
-use std::sync::{Arc, Mutex};
+use std::sync::{
+	Arc,
+	Mutex,
+};
 
 use edge_cameras::{
-	camera_device::{CameraDevice, CameraLike},
-	controls::{traits::ControlDescription as _, values::ConValueIntegerType},
+	camera_device::{
+		CameraDevice,
+		CameraLike,
+	},
+	controls::{
+		traits::ControlDescription as _,
+		values::ConValueIntegerType,
+	},
 };
-use eframe::egui::{self, TextBuffer as _};
+use eframe::egui::{
+	self,
+	TextBuffer as _,
+};
 use egui_file_dialog::FileDialog;
 
 use crate::{
 	audio::Audio,
 	camera_controls::{
-		ControlManager, build_control_sweeps, extract_controls,
+		ControlManager,
+		build_control_sweeps,
+		extract_controls,
 		try_disable_auto_exposure,
 	},
 	capture::Capture,
@@ -21,8 +35,11 @@ use crate::{
 	runner::Runner,
 	saving::Saving,
 	settings::{
-		DEFAULT_CAMERA_LABEL, DEFAULT_PATH_LABEL, DEFAULT_SUBSET_LABEL,
-		DIRECTORY_SELECTED_LABEL, FAILED_DIRECTORY_LABEL,
+		DEFAULT_CAMERA_LABEL,
+		DEFAULT_PATH_LABEL,
+		DEFAULT_SUBSET_LABEL,
+		DIRECTORY_SELECTED_LABEL,
+		FAILED_DIRECTORY_LABEL,
 		NON_EMPTY_DIRECTORY_SELECTED_LABEL,
 	},
 	subset::Subset,

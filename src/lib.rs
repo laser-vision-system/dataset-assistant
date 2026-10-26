@@ -96,17 +96,25 @@ mod sweep;
 mod user_interface;
 
 use eframe::{
-	EventLoopBuilder, EventLoopBuilderHook, NativeOptions, Renderer, UserEvent,
+	EventLoopBuilder,
+	EventLoopBuilderHook,
+	NativeOptions,
+	Renderer,
+	UserEvent,
 	egui::ViewportBuilder,
 };
 #[cfg(target_os = "linux")]
-use winit::platform::wayland::EventLoopBuilderExtWayland as _; // Bring into context.
+use winit::platform::wayland::EventLoopBuilderExtWayland as _;
 
 use self::{
 	application::DatasetAssistantApp,
 	settings::{
-		DEFAULT_HEIGHT, DEFAULT_MAX_HEIGHT, DEFAULT_MAX_WIDTH,
-		DEFAULT_MIN_HEIGHT, DEFAULT_MIN_WIDTH, DEFAULT_WIDTH,
+		DEFAULT_HEIGHT,
+		DEFAULT_MAX_HEIGHT,
+		DEFAULT_MAX_WIDTH,
+		DEFAULT_MIN_HEIGHT,
+		DEFAULT_MIN_WIDTH,
+		DEFAULT_WIDTH,
 	},
 };
 
@@ -118,11 +126,11 @@ use self::{
 pub fn run() -> eframe::Result {
 	let event_loop_builder: Option<EventLoopBuilderHook> = cfg_select! {
 		target_os = "linux" => {
-			Some(Box::new(|builder: &mut EventLoopBuilder<UserEvent>| { builder.with_any_thread(true); }))
+			Some(Box::new(|builder: &mut EventLoopBuilder<UserEvent>| {
+				builder.with_any_thread(true);
+			}))
 		},
-		_ => {
-			None
-		}
+		_ => None,
 	};
 
 	let options = NativeOptions {

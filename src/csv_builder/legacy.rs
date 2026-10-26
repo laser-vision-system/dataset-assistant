@@ -1,16 +1,31 @@
 //! A CSV builder of the legacy format.
 
 use std::{
-	path::{Path, PathBuf},
+	path::{
+		Path,
+		PathBuf,
+	},
 	thread,
 };
 
-use walkdir::{DirEntry, WalkDir};
+use walkdir::{
+	DirEntry,
+	WalkDir,
+};
 
 use super::{
-	FileWriter, get_file_name, get_relative_path, is_image_file, is_not_git_dir,
+	FileWriter,
+	get_file_name,
+	get_relative_path,
+	is_image_file,
+	is_not_git_dir,
 };
-use crate::runner::{Result, Runner, RunnerError, RunnerJoinHandle};
+use crate::runner::{
+	Result,
+	Runner,
+	RunnerError,
+	RunnerJoinHandle,
+};
 
 const OUTPUT_NAME: &str = "index.csv";
 

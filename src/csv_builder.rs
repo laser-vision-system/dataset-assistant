@@ -6,12 +6,19 @@ pub mod standard;
 
 use std::{
 	fs,
-	path::{Path, PathBuf},
+	path::{
+		Path,
+		PathBuf,
+	},
 };
 
 use walkdir::DirEntry;
 
-use crate::runner::{Result, Runner, RunnerError};
+use crate::runner::{
+	Result,
+	Runner,
+	RunnerError,
+};
 
 type FileWriter = csv::Writer<fs::File>;
 

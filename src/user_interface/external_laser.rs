@@ -1,6 +1,9 @@
 use eframe::egui;
 
-use crate::entry::{ParseAs as _, StaticLabelTextEntryBox};
+use crate::entry::{
+	ParseAs as _,
+	StaticLabelTextEntryBox,
+};
 
 #[derive(Debug, Default)]
 pub struct ExternalLaser {

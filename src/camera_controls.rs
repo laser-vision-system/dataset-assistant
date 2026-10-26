@@ -1,16 +1,33 @@
 use edge_cameras::{
-	camera_device::{CameraDevice, CameraLike},
+	camera_device::{
+		CameraDevice,
+		CameraLike,
+	},
 	controls::{
-		descriptions::{CamControl, IntegerRangeControl},
+		descriptions::{
+			CamControl,
+			IntegerRangeControl,
+		},
 		traits::{
-			ControlDefault, ControlDescription, ControlItems as _, ControlMax,
-			ControlMin, ControlStep, ControlValue as _,
+			ControlDefault,
+			ControlDescription,
+			ControlItems as _,
+			ControlMax,
+			ControlMin,
+			ControlStep,
+			ControlValue as _,
 		},
 		values::ConValueIntegerType,
 	},
-	error::{EdgeCamerasError, EdgeCamerasResult},
+	error::{
+		EdgeCamerasError,
+		EdgeCamerasResult,
+	},
 };
-use nokhwa::utils::{KnownCameraControl, MenuItem};
+use nokhwa::utils::{
+	KnownCameraControl,
+	MenuItem,
+};
 
 use crate::sweep::ControlSweep;
 

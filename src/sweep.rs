@@ -1,14 +1,26 @@
 use std::{
 	fmt,
 	iter::StepBy,
-	ops::{ControlFlow, RangeInclusive},
+	ops::{
+		ControlFlow,
+		RangeInclusive,
+	},
 };
 
 use edge_cameras::{
-	camera_device::{CameraDevice, CameraLike},
+	camera_device::{
+		CameraDevice,
+		CameraLike,
+	},
 	controls::{
-		traits::{ControlDefault as _, ControlDescription as _},
-		values::{ConValueInteger, ConValueIntegerType},
+		traits::{
+			ControlDefault as _,
+			ControlDescription as _,
+		},
+		values::{
+			ConValueInteger,
+			ConValueIntegerType,
+		},
 	},
 };
 

@@ -15,8 +15,12 @@
 
 use std::{
 	fmt::Display,
-	fs, io,
-	path::{Path, PathBuf},
+	fs,
+	io,
+	path::{
+		Path,
+		PathBuf,
+	},
 };
 
 use super::subset::Subset;

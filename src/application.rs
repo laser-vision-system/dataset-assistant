@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{
+	Arc,
+	Mutex,
+};
 
 use eframe::egui;
 
@@ -6,7 +9,10 @@ use crate::{
 	audio::Audio,
 	capture::Capture,
 	state::State,
-	user_interface::{self, UIComponents},
+	user_interface::{
+		self,
+		UIComponents,
+	},
 };
 
 /// The central egui application.

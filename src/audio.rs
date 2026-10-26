@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use rodio::{MixerDeviceSink, Source};
+use rodio::{
+	MixerDeviceSink,
+	Source,
+};
 
 #[derive(Debug)]
 pub struct Audio {
