@@ -16,6 +16,9 @@ use edge_cameras::{
 		traits::{
 			ControlDefault as _,
 			ControlDescription as _,
+			ControlMax as _,
+			ControlMin as _,
+			ControlStep as _,
 		},
 		values::{
 			ConValueInteger,
@@ -130,11 +133,35 @@ impl From<ControlManager> for ControlSweep {
 
 impl fmt::Display for ControlSweep {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(
+		writeln!(
 			f,
 			"{}: {}",
 			self.control.control_id(),
-			self.control.control_value()
+			self.control.control_value(),
+		)?;
+		writeln!(
+			f,
+			"{}-default: {}",
+			self.control.control_id(),
+			self.control.base.control_default(),
+		)?;
+		writeln!(
+			f,
+			"{}-min: {}",
+			self.control.control_id(),
+			self.control.base.control_min(),
+		)?;
+		write!(
+			f,
+			"{}-max: {}",
+			self.control.control_id(),
+			self.control.base.control_max()
+		)?;
+		write!(
+			f,
+			"{}-step: {}",
+			self.control.control_id(),
+			self.control.base.control_step()
 		)
 	}
 }
