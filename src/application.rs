@@ -1,6 +1,9 @@
-use std::sync::{
-	Arc,
-	Mutex,
+use std::{
+	convert::identity,
+	sync::{
+		Arc,
+		Mutex,
+	},
 };
 
 use eframe::egui;
@@ -133,7 +136,7 @@ impl DatasetAssistantApp {
 			requested_capture
 		})
 		.body_returned
-		.is_some_and(|requested| requested)
+		.is_some_and(identity)
 	}
 
 	fn save_section(&mut self, ui: &mut egui::Ui) {
