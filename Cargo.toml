@@ -18,10 +18,11 @@ nokhwa = { path = "./edge/submodules/nokhwa", default-features = false, features
 	"input-native",
 ] }
 
-mutually_exclusive_features = "0.1"
 image = { version = "0.25", default-features = false, features = [
 	"rayon",
 	"jpeg",
+	"webp",
+	"avif",
 ] }
 serde = { version = "1" , features = [
 	"derive"

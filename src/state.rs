@@ -396,9 +396,9 @@ impl State {
 				.get_frame_buffer()
 				.map_err(|why| format!("Failed to get frame: {why}"))?;
 			let image = buffer
-				.try_decode()
+				.try_decode_to_image()
 				.map_err(|why| format!("Failed to decode to image: {why}"))?;
-			capture.store_image(&image);
+			capture.store_image(&image.into());
 		}
 		Ok(())
 	}

@@ -196,7 +196,7 @@ fn loop_all_permutations(
 		thread::sleep(CAMERA_GRACE_PERIOD);
 
 		progress.lock().unwrap().replace_with(&val_strs.detailed);
-		let image = get_image(&mut camera.lock().unwrap());
+		let image = get_image(&mut camera.lock().unwrap()).into();
 
 		let img_filepath = create_image_path(destination, &val_strs.short);
 		save_image_to(&mut capture.lock().unwrap(), &image, &img_filepath);
@@ -250,7 +250,7 @@ fn get_image(camera: &mut CameraDevice) -> Image {
 	// To address latency, skip 1 frame.
 	camera.get_frame_buffer().unwrap();
 	let buffer = camera.get_frame_buffer().unwrap();
-	buffer.try_decode().unwrap()
+	buffer.try_decode_to_image().unwrap()
 }
 
 fn create_image_path(destination: &Path, short: &str) -> PathBuf {
