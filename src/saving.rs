@@ -5,14 +5,27 @@ use std::{
 	fs::File,
 	io::Write as _,
 	ops::ControlFlow,
-	path::{Path, PathBuf},
-	sync::{Arc, Mutex},
+	path::{
+		Path,
+		PathBuf,
+	},
+	sync::{
+		Arc,
+		Mutex,
+		atomic::{
+			AtomicBool,
+			Ordering,
+		},
+	},
 	thread,
 	time::Duration,
 };
 
 use edge_cameras::{
-	camera_device::{CameraDevice, CameraLike},
+	camera_device::{
+		CameraDevice,
+		CameraLike as _,
+	},
 	controls::traits::ControlValue as _,
 };
 use edge_core::image::Image;
@@ -21,8 +34,16 @@ use image::RgbImage;
 
 use crate::{
 	capture::Capture,
-	runner::{Runner, RunnerError, RunnerJoinHandle},
-	settings::{FILE_NAME_BASE, IMAGE_EXTENSION, META_EXTENSION},
+	runner::{
+		Runner,
+		RunnerError,
+		RunnerJoinHandle,
+	},
+	settings::{
+		FILE_NAME_BASE,
+		IMAGE_EXTENSION,
+		META_EXTENSION,
+	},
 	sweep::ControlSweep,
 };
 
@@ -47,25 +68,34 @@ impl ImageMetadata {
 		}
 	}
 
-	pub fn append_sweep(&mut self, sweep: &ControlSweep) {
-		writeln!(self.detailed, "{sweep}")
-			.expect("Writing into the value strings should never fail");
+	pub fn append_sweep(&mut self, sweep: &ControlSweep) -> std::fmt::Result {
+		writeln!(self.detailed, "{sweep}")?;
 		let value = sweep.to_control_type_value().get().to_string();
 		write!(self.short, "_{value}")
-			.expect("Writing into the value strings should never fail");
 	}
 
-	pub fn append(&mut self, label: &str, value: &str) {
-		writeln!(self.detailed, "{label}: {value}")
-			.expect("Writing into the value strings should never fail");
+	pub fn append_all(&mut self, label: &str, value: &str) -> std::fmt::Result {
+		self.append_detailed(label, value)?;
+		self.append_short(value)
+	}
+
+	pub fn append_short(&mut self, value: &str) -> std::fmt::Result {
 		write!(self.short, "_{value}")
-			.expect("Writing into the value strings should never fail");
+	}
+
+	pub fn append_detailed(
+		&mut self,
+		label: &str,
+		value: &str,
+	) -> std::fmt::Result {
+		writeln!(self.detailed, "{label}: {value}")
 	}
 }
 
 #[derive(Debug, Default)]
 pub struct Saving {
 	handle: Option<RunnerJoinHandle>,
+	cancel: Arc<AtomicBool>,
 }
 
 impl Saving {
@@ -77,20 +107,25 @@ impl Saving {
 	pub fn start(
 		destination: PathBuf,
 		mut control_sweeps: Vec<ControlSweep>,
+		fixed_controls: Vec<(String, String)>,
 		external_intensity: Option<f32>,
 		capture: Arc<Mutex<Capture>>,
 		camera: Arc<Mutex<CameraDevice>>,
 		progress: Arc<Mutex<String>>,
 	) -> Self {
+		let cancel = Arc::new(AtomicBool::new(false));
+		let worker_cancel = Arc::clone(&cancel);
 		let run = move || {
 			// Technically impossible to get any other result.
 			let res = loop_all_permutations(
 				&destination,
 				&mut control_sweeps,
+				&fixed_controls,
 				external_intensity,
 				&capture,
 				&camera,
 				&progress,
+				&worker_cancel,
 			)
 			.break_ok();
 			set_to_defaults(&mut control_sweeps, &camera);
@@ -104,6 +139,7 @@ impl Saving {
 			.unwrap();
 		Self {
 			handle: Some(handle),
+			cancel,
 		}
 	}
 }
@@ -112,24 +148,44 @@ impl Runner for Saving {
 	fn handle(&mut self) -> &mut Option<RunnerJoinHandle> {
 		&mut self.handle
 	}
+
+	fn cancel(&mut self) {
+		self.cancel.store(true, Ordering::Relaxed);
+	}
 }
 
 /// Iterate through every control permutation, saving the result.
 ///
 /// This function will only ever return [`ControlFlow::Break`].
+#[expect(
+	clippy::too_many_arguments,
+	reason = "Function has a big responsbility"
+)]
 fn loop_all_permutations(
 	destination: &Path,
 	control_sweeps: &mut [ControlSweep],
+	fixed_controls: &[(String, String)],
 	external_intensity: Option<f32>,
 	capture: &Mutex<Capture>,
 	camera: &Mutex<CameraDevice>,
 	progress: &Mutex<String>,
+	cancel: &AtomicBool,
 ) -> ControlFlow<()> {
 	loop {
+		if cancel.load(Ordering::Relaxed) {
+			return ControlFlow::Break(());
+		}
 		let mut val_strs = ImageMetadata::for_length(control_sweeps.len());
 		if let Some(external_intensity) = external_intensity {
 			let value_string = external_intensity.to_string();
-			val_strs.append("externalLaserIntensity", &value_string);
+			val_strs
+				.append_all("externalLaserIntensity", &value_string)
+				.expect("Writing into the value strings should never fail");
+		}
+		for (label, value) in fixed_controls {
+			val_strs
+				.append_detailed(label, value)
+				.expect("Writing into the value strings should never fail");
 		}
 
 		let sweeps = make_owned_collection(control_sweeps);
@@ -140,7 +196,7 @@ fn loop_all_permutations(
 		thread::sleep(CAMERA_GRACE_PERIOD);
 
 		progress.lock().unwrap().replace_with(&val_strs.detailed);
-		let image = get_image(&mut camera.lock().unwrap());
+		let image = get_image(&mut camera.lock().unwrap()).into();
 
 		let img_filepath = create_image_path(destination, &val_strs.short);
 		save_image_to(&mut capture.lock().unwrap(), &image, &img_filepath);
@@ -173,7 +229,9 @@ fn update_cam_controls(
 
 	call_on_each(control_sweeps, |sweep| {
 		sweep.apply_current(&mut camera);
-		val_strs.append_sweep(sweep);
+		val_strs
+			.append_sweep(sweep)
+			.expect("Writing into the value strings should never fail");
 	});
 }
 
@@ -183,7 +241,7 @@ where
 	F: FnMut(&mut ControlSweep),
 {
 	for sweep in control_sweeps {
-		func(sweep)
+		func(sweep);
 	}
 }
 
@@ -192,7 +250,7 @@ fn get_image(camera: &mut CameraDevice) -> Image {
 	// To address latency, skip 1 frame.
 	camera.get_frame_buffer().unwrap();
 	let buffer = camera.get_frame_buffer().unwrap();
-	buffer.try_decode().unwrap()
+	buffer.try_decode_to_image().unwrap()
 }
 
 fn create_image_path(destination: &Path, short: &str) -> PathBuf {
@@ -224,6 +282,7 @@ fn increment_controls(control_sweeps: &mut [ControlSweep]) -> ControlFlow<()> {
 	let should_continue = control_sweeps
 		.iter_mut()
 		.rev()
+		.filter(|sweep| sweep.is_enabled())
 		.any(|sweep| sweep.step().is_continue());
 
 	if should_continue {
@@ -241,5 +300,43 @@ fn set_to_defaults(
 	let mut camera = camera.lock().unwrap();
 	for sweep_types in control_sweeps {
 		sweep_types.apply_default(&mut camera);
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use edge_cameras::controls::{
+		descriptions::IntegerRangeControl,
+		values::ConValueInteger,
+	};
+	use nokhwa::utils::KnownCameraControl;
+
+	use super::*;
+	use crate::camera_controls::ControlManager;
+
+	fn control(enable: bool) -> ControlManager {
+		let base = IntegerRangeControl::new(
+			KnownCameraControl::Brightness,
+			ConValueInteger::from(0),
+			0,
+			1,
+			0,
+			1,
+		);
+		ControlManager {
+			base,
+			value: 0,
+			step: 1,
+			min: 0,
+			max: 1,
+			enable,
+		}
+	}
+
+	#[test]
+	fn disabled_sweeps_do_not_block_enabled_sweep_completion() {
+		let mut sweeps = vec![control(false).into(), control(true).into()];
+		assert!(increment_controls(&mut sweeps).is_continue());
+		assert!(!increment_controls(&mut sweeps).is_continue());
 	}
 }

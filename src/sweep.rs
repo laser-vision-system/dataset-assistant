@@ -1,14 +1,29 @@
 use std::{
 	fmt,
 	iter::StepBy,
-	ops::{ControlFlow, RangeInclusive},
+	ops::{
+		ControlFlow,
+		RangeInclusive,
+	},
 };
 
 use edge_cameras::{
-	camera_device::{CameraDevice, CameraLike},
+	camera_device::{
+		CameraDevice,
+		CameraLike as _,
+	},
 	controls::{
-		traits::{ControlDefault as _, ControlDescription as _},
-		values::{ConValueInteger, ConValueIntegerType},
+		traits::{
+			ControlDefault as _,
+			ControlDescription as _,
+			ControlMax as _,
+			ControlMin as _,
+			ControlStep as _,
+		},
+		values::{
+			ConValueInteger,
+			ConValueIntegerType,
+		},
 	},
 };
 
@@ -17,6 +32,7 @@ use crate::camera_controls::ControlManager;
 #[derive(Debug)]
 pub struct ControlSweep {
 	control: ControlManager,
+	enabled: bool,
 	/// The iterator actively being consumed.
 	active_iter: StepBy<RangeInclusive<ConValueIntegerType>>,
 }
@@ -27,6 +43,9 @@ impl ControlSweep {
 	/// This returns [`ControlFlow::Continue`] until the iterator is exhausted,
 	/// where it returns [`ControlFlow::Break`].
 	pub fn step(&mut self) -> ControlFlow<()> {
+		if !self.enabled {
+			return ControlFlow::Break(());
+		}
 		if let Some(val) = self.active_iter.next() {
 			self.control
 				.try_set_control_value(val)
@@ -37,6 +56,11 @@ impl ControlSweep {
 			self.update_value();
 			ControlFlow::Break(())
 		}
+	}
+
+	/// Return whether this control participates in the sweep.
+	pub fn is_enabled(&self) -> bool {
+		self.enabled
 	}
 
 	#[expect(
@@ -86,24 +110,58 @@ impl ControlSweep {
 }
 
 impl From<ControlManager> for ControlSweep {
-	fn from(value: ControlManager) -> Self {
+	fn from(mut value: ControlManager) -> Self {
+		let enabled = value.enable;
+		if !enabled {
+			let default = value.control_default();
+			value
+				.try_set_control_value(default)
+				.expect("control default should be valid");
+		}
 		let active_iter = Self::create_range(&value);
 		let mut new = Self {
 			control: value,
+			enabled,
 			active_iter,
 		};
-		new.update_value();
+		if enabled {
+			new.update_value();
+		}
 		new
 	}
 }
 
 impl fmt::Display for ControlSweep {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(
+		writeln!(
 			f,
 			"{}: {}",
 			self.control.control_id(),
-			self.control.control_value()
+			self.control.control_value(),
+		)?;
+		writeln!(
+			f,
+			"{}-default: {}",
+			self.control.control_id(),
+			self.control.base.control_default(),
+		)?;
+		writeln!(
+			f,
+			"{}-min: {}",
+			self.control.control_id(),
+			self.control.base.control_min(),
+		)?;
+		write!(
+			f,
+			"{}-max: {}",
+			self.control.control_id(),
+			self.control.base.control_max()
+		)?;
+		write!(
+			f,
+			"{}-step: {}",
+			self.control.control_id(),
+			self.control.base.control_step()
 		)
 	}
 }

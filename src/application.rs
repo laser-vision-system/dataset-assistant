@@ -1,4 +1,10 @@
-use std::sync::{Arc, Mutex};
+use std::{
+	convert::identity,
+	sync::{
+		Arc,
+		Mutex,
+	},
+};
 
 use eframe::egui;
 
@@ -6,7 +12,10 @@ use crate::{
 	audio::Audio,
 	capture::Capture,
 	state::State,
-	user_interface::{self, UIComponents},
+	user_interface::{
+		self,
+		UIComponents,
+	},
 };
 
 /// The central egui application.
@@ -34,12 +43,11 @@ impl DatasetAssistantApp {
 
 		ui.spacing_mut().indent_ends_with_horizontal_line = true;
 
-		let requested_capture = ui
-			.add_enabled_ui(self.state.current_state_is_preparation(), |ui| {
-				self.directory_section(ui);
-				self.camera_section(ui)
-			})
-			.inner;
+		ui.add_enabled_ui(self.state.current_state_is_preparation(), |ui| {
+			self.directory_section(ui);
+		});
+
+		let requested_capture = self.camera_section(ui);
 
 		self.save_section(ui);
 
@@ -48,10 +56,11 @@ impl DatasetAssistantApp {
 
 	fn directory_section(&mut self, ui: &mut egui::Ui) {
 		user_interface::add_subsection(ui, "Directory", |ui| {
-			ui.add_enabled_ui(!self.state.get_live_feed(), |ui| {
+			ui.add_enabled_ui(!self.ui.live_feed(), |ui| {
 				ui.label(self.state.get_dataset_path_label());
-				self.state
-					.set_chose_folder(user_interface::choose_folder(ui));
+				if user_interface::choose_folder(ui) {
+					self.ui.open_folder_dialog();
+				}
 
 				ui.separator();
 
@@ -65,14 +74,8 @@ impl DatasetAssistantApp {
 
 				ui.add_enabled_ui(self.state.dataset_ready(), |ui| {
 					ui.label(self.state.get_subset_path_label());
-					let (camera_position_input, laser_intensity_input) =
-						self.state.get_subset_inputs();
-					if let Some(subset) =
-						user_interface::display_subset_entry_grid(
-							ui,
-							camera_position_input,
-							laser_intensity_input,
-						) {
+					if let Some(subset) = self.ui.display_subset_entry_grid(ui)
+					{
 						self.state.try_add_subset(subset);
 					}
 				});
@@ -82,31 +85,42 @@ impl DatasetAssistantApp {
 
 	fn camera_section(&mut self, ui: &mut egui::Ui) -> bool {
 		user_interface::add_subsection(ui, "Camera", |ui| {
-			ui.add_enabled_ui(!self.state.get_live_feed(), |ui| {
-				if let Some(selection) = user_interface::camera_selection(
-					ui,
-					self.state.get_camera_id_label(),
-				) {
-					self.state.set_requested_cam_index(selection);
-				}
-			});
+			ui.add_enabled_ui(
+				!self.ui.live_feed()
+					&& self.state.current_state_is_preparation(),
+				|ui| {
+					if let Some(selection) = user_interface::camera_selection(
+						ui,
+						self.state.get_camera_id_label(),
+					) {
+						self.state.set_requested_cam_index(selection);
+					}
+				},
+			);
+
+			ui.toggle_value(self.ui.show_display_mut(), "Show display panel");
 
 			ui.separator();
 
 			let requested_capture = ui
 				.add_enabled_ui(self.state.camera_ready(), |ui| {
-					ui.toggle_value(
-						self.state.get_show_display_mut(),
-						"Show display panel",
-					);
-					user_interface::capture_controls(
-						ui,
-						self.state.get_live_feed_mut(),
-					)
+					ui.horizontal(|ui| {
+						let btn_result = ui.add_enabled(
+							!self.ui.live_feed()
+								&& self.state.current_state_is_preparation(),
+							egui::Button::new("Preview capture"),
+						);
+						ui.checkbox(self.ui.live_feed_mut(), "Live feed");
+						btn_result
+					})
+					.inner
+					.clicked()
 				})
 				.inner;
 
-			if self.state.camera_ready() {
+			if self.state.camera_ready()
+				&& self.state.current_state_is_preparation()
+			{
 				let mut controls = self.state.get_controls();
 				if controls.is_empty() {
 					ui.label("No controls...");
@@ -116,7 +130,7 @@ impl DatasetAssistantApp {
 						egui::CollapsingHeader::new("Controls:")
 							.default_open(false)
 							.show(ui, |ui| {
-								user_interface::draw_controls(ui, &mut controls)
+								self.ui.draw_controls(ui, &mut controls)
 							})
 							.body_returned;
 					self.state
@@ -127,7 +141,7 @@ impl DatasetAssistantApp {
 			requested_capture
 		})
 		.body_returned
-		.is_some_and(|requested| requested)
+		.is_some_and(identity)
 	}
 
 	fn save_section(&mut self, ui: &mut egui::Ui) {
@@ -135,7 +149,16 @@ impl DatasetAssistantApp {
 			ui.add_enabled_ui(
 				self.state.current_state_is_preparation(),
 				|ui| {
+					// TODO: Move this logic out of this section.
 					let res = self.ui.query_external_laser(ui);
+					let (permutations, estimate) = self.state.saving_estimate();
+
+					user_interface::draw_save_estimate(
+						ui,
+						permutations,
+						estimate,
+					);
+
 					if user_interface::save_button(ui, self.state.is_complete())
 					{
 						_ = self
@@ -153,23 +176,36 @@ impl DatasetAssistantApp {
 					ui,
 					&self.state.get_saving_progress(),
 				);
+				if user_interface::draw_cancel_confirmation(
+					ui,
+					self.ui.confirm_cancel_mut(),
+				) {
+					self.state.cancel_saving();
+					*self.ui.confirm_cancel_mut() = false;
+				}
 			});
 		});
 	}
 
 	fn update(&mut self, ui: &mut egui::Ui, requested_capture: bool) {
+		self.ui.update_folder_dialog(ui);
+		if let Some(path) = self.ui.take_selected_folder() {
+			self.state.select_dataset_folder(path);
+		}
 		let mut capture = self
 			.capture
 			.lock()
 			.expect("Capture should never be poisoned");
-		self.state
-			.execute_for_preparation(&mut capture, ui, requested_capture);
+		self.state.execute_for_preparation(
+			&mut capture,
+			requested_capture || self.ui.live_feed(),
+		);
 
 		self.state.execute_for_collecting(ui, &self.sound);
 
 		self.state.execute_for_building_csv();
 
-		if self.state.get_live_feed()
+		if self.ui.live_feed()
 			|| requested_capture
 			|| self.state.current_state_is_collecting()
 		{
@@ -180,7 +216,7 @@ impl DatasetAssistantApp {
 
 impl eframe::App for DatasetAssistantApp {
 	fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-		let show_display = self.state.get_show_display();
+		let show_display = self.ui.show_display();
 
 		let requested_capture = if show_display {
 			let requested_capture =
@@ -206,7 +242,7 @@ impl eframe::App for DatasetAssistantApp {
 
 		self.update(ui, requested_capture);
 
-		let new_show_display = self.state.get_show_display();
+		let new_show_display = self.ui.show_display();
 		if show_display != new_show_display {
 			if new_show_display {
 				user_interface::adjust_viewport_expanded(ui);

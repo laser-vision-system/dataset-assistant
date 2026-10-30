@@ -1,17 +1,33 @@
 //! A CSV builder of the standard format.
 
 use std::{
-	fmt, fs,
-	path::{Path, PathBuf},
+	fmt,
+	fs,
+	path::{
+		Path,
+		PathBuf,
+	},
 	thread,
 };
 
-use walkdir::{DirEntry, WalkDir};
+use walkdir::{
+	DirEntry,
+	WalkDir,
+};
 
 use super::{
-	FileWriter, get_file_name, get_relative_path, is_image_file, is_not_git_dir,
+	FileWriter,
+	get_file_name,
+	get_relative_path,
+	is_image_file,
+	is_not_git_dir,
 };
-use crate::runner::{Result, Runner, RunnerError, RunnerJoinHandle};
+use crate::runner::{
+	Result,
+	Runner,
+	RunnerError,
+	RunnerJoinHandle,
+};
 
 const OUTPUT_NAME: &str = "index.csv";
 
@@ -43,7 +59,7 @@ impl Runner for Builder {
 }
 
 type MetadataList = Vec<MetadataField>;
-type IntType = u32;
+type IntType = i64;
 type FloatType = f32;
 
 /// Represents the types of values that the metadata field might have.
@@ -51,6 +67,7 @@ type FloatType = f32;
 enum FieldType {
 	Int(IntType),
 	Float(FloatType),
+	Text(String),
 }
 
 impl FieldType {
@@ -78,26 +95,22 @@ impl fmt::Display for FieldType {
 		match self {
 			Self::Int(int) => int.fmt(f),
 			Self::Float(float) => float.fmt(f),
+			Self::Text(text) => text.fmt(f),
 		}
 	}
 }
 
-impl TryFrom<&str> for FieldType {
-	type Error = RunnerError;
-
-	fn try_from(value: &str) -> Result<Self> {
+impl From<&str> for FieldType {
+	fn from(value: &str) -> Self {
 		let maybe_int = Self::try_as_int(value);
 		if let Ok(success) = maybe_int {
-			return Ok(success);
+			return success;
 		}
 		let maybe_float = Self::try_as_float(value);
 		if let Ok(success) = maybe_float {
-			return Ok(success);
+			return success;
 		}
-
-		Err(RunnerError::new(format!(
-			"failed to parse metadata value '{value}'"
-		)))
+		Self::Text(value.to_owned())
 	}
 }
 
@@ -205,8 +218,7 @@ fn parse_metadata_line(line: &str) -> Result<MetadataField> {
 
 	let key = key.trim();
 	let value = value.trim();
-
-	let parsed_value = FieldType::try_from(value)?;
+	let parsed_value = FieldType::from(value);
 
 	Ok(MetadataField {
 		key: key.trim().to_owned(),

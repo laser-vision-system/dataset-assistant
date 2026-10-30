@@ -1,6 +1,9 @@
 //! Execute an operation on a separate thread.
 
-use std::{error::Error, fmt};
+use std::{
+	error::Error,
+	fmt,
+};
 
 pub type RunnerJoinHandle = std::thread::JoinHandle<Result<()>>;
 pub type Result<T> = std::result::Result<T, RunnerError>;
@@ -8,6 +11,9 @@ pub type Result<T> = std::result::Result<T, RunnerError>;
 /// Types that implement this trait can execute on a separate thread.
 pub trait Runner {
 	fn handle(&mut self) -> &mut Option<RunnerJoinHandle>;
+
+	fn cancel(&mut self) {
+	}
 
 	fn is_done(&mut self) -> Option<RunnerResult> {
 		let handle = self.handle().take()?;
@@ -64,4 +70,5 @@ impl fmt::Display for RunnerError {
 	}
 }
 
-impl Error for RunnerError {}
+impl Error for RunnerError {
+}

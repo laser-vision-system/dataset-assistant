@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use rodio::{MixerDeviceSink, Source};
+use rodio::{
+	MixerDeviceSink,
+	Source as _,
+};
 
 #[derive(Debug)]
 pub struct Audio {
@@ -10,11 +13,11 @@ pub struct Audio {
 impl Audio {
 	pub fn play_tones(&self, tones: &[Tone]) {
 		let player = rodio::Player::connect_new(self.sink.mixer());
-		tones.into_iter().for_each(|tone| {
+		for tone in tones {
 			let tone = rodio::source::SineWave::new(tone.frequency)
 				.take_duration(tone.duration);
 			player.append(tone);
-		});
+		}
 		player.detach();
 	}
 

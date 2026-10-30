@@ -1,18 +1,37 @@
 #![expect(clippy::unwrap_used, reason = "Lazy developer")]
 
-use std::sync::{Arc, Mutex};
+use std::{
+	path::PathBuf,
+	sync::{
+		Arc,
+		Mutex,
+	},
+};
 
 use edge_cameras::{
-	camera_device::{CameraDevice, CameraLike},
-	controls::{traits::ControlDescription as _, values::ConValueIntegerType},
+	camera_device::{
+		CameraDevice,
+		CameraLike as _,
+	},
+	controls::{
+		traits::ControlDescription as _,
+		values::ConValueIntegerType,
+	},
 };
-use eframe::egui::{self, TextBuffer as _};
-use egui_file_dialog::FileDialog;
+use eframe::egui::{
+	self,
+	TextBuffer as _,
+};
 
 use crate::{
 	audio::Audio,
 	camera_controls::{
-		ControlManager, build_control_sweeps, extract_controls,
+		ControlManager,
+		build_control_sweeps,
+		estimate_save_duration,
+		extract_controls,
+		extract_fixed_control_values,
+		total_permutations,
 		try_disable_auto_exposure,
 	},
 	capture::Capture,
@@ -21,8 +40,11 @@ use crate::{
 	runner::Runner,
 	saving::Saving,
 	settings::{
-		DEFAULT_CAMERA_LABEL, DEFAULT_PATH_LABEL, DEFAULT_SUBSET_LABEL,
-		DIRECTORY_SELECTED_LABEL, FAILED_DIRECTORY_LABEL,
+		DEFAULT_CAMERA_LABEL,
+		DEFAULT_PATH_LABEL,
+		DEFAULT_SUBSET_LABEL,
+		DIRECTORY_SELECTED_LABEL,
+		FAILED_DIRECTORY_LABEL,
 		NON_EMPTY_DIRECTORY_SELECTED_LABEL,
 	},
 	subset::Subset,
@@ -48,15 +70,6 @@ pub struct State {
 	/// Transient.
 	should_build_csv: Option<u8>,
 
-	/// Set externally, read locally; glorified parameter input.
-	/// Remotely polls button input.
-	/// Coupled to [`file_dialog`](FileDialog).
-	/// Semi-transient.
-	chose_folder: bool,
-	/// Only accessed mutably. Uses chose folder to produce a dataset.
-	/// Cohesion with [`dataset`](Dataset).
-	/// Persistent.
-	file_dialog: FileDialog,
 	/// Created by file dialog and used to set subset, try for collecting, or
 	/// build csv. Only set back to None when selecting an invalid path.
 	/// Deeply coupled [here](self).
@@ -67,11 +80,6 @@ pub struct State {
 	/// Persistent.
 	dataset_path_label: String,
 
-	/// These two are only ever used in the UI for the subset grid.
-	/// Coupled to [`Subset`].
-	/// Persistent.
-	camera_position_input: String,
-	laser_intensity_input: String,
 	/// Set when adding subset, only diplayed once.
 	/// Coupled to [here](self) and [`dataset`](Dataset)/[`Subset`].
 	/// Persistent.
@@ -93,21 +101,11 @@ pub struct State {
 	/// for collecting. Coupled to [`camera`](CameraDevice).
 	/// Semi-persistent.
 	controls: Vec<ControlManager>,
+	fixed_control_values: Vec<(String, String)>,
 	/// Set externally, consumed when read; glorified parameter input.
 	/// Coupled to [`camera`](CameraDevice) and [`controls`](ControlManager).
 	/// Transient.
 	requested_controls: Option<Vec<Option<ConValueIntegerType>>>,
-
-	/// Toggled in one placed and use extensively in app and ui.
-	/// Locally guards reading from camera.
-	/// Lightly coupled to [`camera`](CameraDevice).
-	/// Persistent.
-	live_feed: bool,
-
-	/// Set and used externally. Never used locally.
-	/// Intended to be used with live feed.
-	/// Peristent.
-	show_display: bool,
 
 	/// Set in saving pulse and used in UI draw collecting.
 	/// Coupled to [here](self) and [`Saving`].
@@ -135,6 +133,12 @@ impl State {
 
 	pub fn current_state_is_collecting(&self) -> bool {
 		matches!(self.stage, Stage::Collecting(_))
+	}
+
+	pub fn cancel_saving(&mut self) {
+		if let Stage::Collecting(saving) = &mut self.stage {
+			saving.cancel();
+		}
 	}
 
 	pub fn is_complete(&self) -> bool {
@@ -185,14 +189,17 @@ impl State {
 				let skip_exposure =
 					try_disable_auto_exposure(&mut camera).is_err();
 				self.controls = extract_controls(&mut camera, skip_exposure);
+				let swept_controls: Vec<_> = self
+					.controls
+					.iter()
+					.map(ControlManager::control_id)
+					.collect();
+				self.fixed_control_values =
+					extract_fixed_control_values(&mut camera, &swept_controls);
 				Some(Arc::new(Mutex::new(camera)))
 			},
 			Err(_) => None,
 		};
-	}
-
-	pub fn set_chose_folder(&mut self, state: bool) {
-		self.chose_folder = state;
 	}
 
 	pub fn set_should_build_csv(&mut self, state: Option<u8>) {
@@ -218,22 +225,6 @@ impl State {
 		self.saving_progress_label.lock().unwrap().clone()
 	}
 
-	pub fn get_show_display(&mut self) -> bool {
-		self.show_display
-	}
-
-	pub fn get_show_display_mut(&mut self) -> &mut bool {
-		&mut self.show_display
-	}
-
-	pub fn get_live_feed(&self) -> bool {
-		self.live_feed
-	}
-
-	pub fn get_live_feed_mut(&mut self) -> &mut bool {
-		&mut self.live_feed
-	}
-
 	pub fn get_dataset_path_label(&self) -> &str {
 		&self.dataset_path_label
 	}
@@ -242,19 +233,19 @@ impl State {
 		&self.subset_path_label
 	}
 
-	pub fn get_subset_inputs(&mut self) -> (&mut String, &mut String) {
-		(
-			&mut self.camera_position_input,
-			&mut self.laser_intensity_input,
-		)
-	}
-
 	pub fn get_camera_id_label(&self) -> &str {
 		&self.camera_id_label
 	}
 
 	pub fn get_controls(&mut self) -> Vec<&mut ControlManager> {
 		self.controls.iter_mut().collect()
+	}
+
+	pub fn saving_estimate(&self) -> (u128, std::time::Duration) {
+		(
+			total_permutations(&self.controls),
+			estimate_save_duration(&self.controls),
+		)
 	}
 }
 
@@ -265,6 +256,13 @@ impl State {
 		capture: Arc<Mutex<Capture>>,
 		external_laser: Option<f32>,
 	) -> Result<(), String> {
+		let camera = self
+			.camera
+			.as_mut()
+			.ok_or_else(|| String::from("No camera present"))?;
+
+		let control_sweeps = build_control_sweeps(&self.controls);
+		let fixed_controls = self.fixed_control_values.clone();
 		let dataset = self
 			.dataset
 			.as_mut()
@@ -272,15 +270,10 @@ impl State {
 		let path = dataset.try_create_path().map_err(|why| {
 			format!("Failed to create path for collecting: {why}")
 		})?;
-		let camera = self
-			.camera
-			.as_mut()
-			.ok_or_else(|| String::from("No camera present"))?;
-
-		let control_sweeps = build_control_sweeps(&self.controls);
 		let saving = Box::new(Saving::start(
 			path,
 			control_sweeps,
+			fixed_controls,
 			external_laser,
 			capture,
 			camera.clone(),
@@ -297,7 +290,6 @@ impl State {
 	pub fn execute_for_preparation(
 		&mut self,
 		capture: &mut Capture,
-		ui: &mut egui::Ui,
 		request_capture: bool,
 	) {
 		if !self.current_state_is_preparation() {
@@ -312,12 +304,27 @@ impl State {
 
 		if let Some(camera) = self.camera.clone() {
 			self.prep_cam_controls(&camera);
-			_ = self
-				.prep_capture(capture, request_capture, &camera)
+			_ = Self::prep_capture(capture, request_capture, &camera)
 				.inspect_err(|why| eprintln!("{why}"));
 		}
+	}
 
-		self.prep_file_dialog(ui);
+	pub fn select_dataset_folder(&mut self, path: PathBuf) {
+		match Dataset::try_from(path) {
+			Ok(dataset) => {
+				let new_label = if dataset.is_empty() {
+					format!("{DIRECTORY_SELECTED_LABEL}: {dataset}/")
+				} else {
+					format!("{NON_EMPTY_DIRECTORY_SELECTED_LABEL}: {dataset}/")
+				};
+				self.dataset_path_label.replace_with(&new_label);
+				self.dataset = Some(dataset);
+			},
+			Err(why) => {
+				self.dataset_path_label
+					.replace_with(&format!("{FAILED_DIRECTORY_LABEL}: {why}"));
+			},
+		}
 	}
 
 	fn prep_build_csv(&mut self) -> bool {
@@ -341,6 +348,7 @@ impl State {
 			} else {
 				self.camera = None;
 				self.controls = Vec::new();
+				self.fixed_control_values = Vec::new();
 				self.requested_controls.take();
 				self.camera_id_label.replace_with(DEFAULT_CAMERA_LABEL);
 			}
@@ -376,12 +384,11 @@ impl State {
 	}
 
 	fn prep_capture(
-		&mut self,
 		capture: &mut Capture,
 		request_capture: bool,
 		camera: &Mutex<CameraDevice>,
 	) -> Result<(), String> {
-		if request_capture || self.live_feed {
+		if request_capture {
 			let mut cam = camera
 				.lock()
 				.map_err(|why| format!("Unlocking camera failed: {why}"))?;
@@ -389,42 +396,11 @@ impl State {
 				.get_frame_buffer()
 				.map_err(|why| format!("Failed to get frame: {why}"))?;
 			let image = buffer
-				.try_decode()
+				.try_decode_to_image()
 				.map_err(|why| format!("Failed to decode to image: {why}"))?;
-			capture.store_image(&image);
+			capture.store_image(&image.into());
 		}
 		Ok(())
-	}
-
-	fn prep_file_dialog(&mut self, ui: &mut egui::Ui) {
-		if self.chose_folder {
-			self.file_dialog.pick_directory();
-		}
-
-		self.file_dialog.update(ui);
-
-		if let Some(path) = self.file_dialog.take_picked() {
-			let maybe_dataset = Dataset::try_from(path);
-			match maybe_dataset {
-				Ok(dataset) => {
-					let new_label = if dataset.is_empty() {
-						format!("{DIRECTORY_SELECTED_LABEL}: {dataset}/")
-					} else {
-						format!(
-							"{NON_EMPTY_DIRECTORY_SELECTED_LABEL}: {dataset}/"
-						)
-					};
-					self.dataset_path_label.replace_with(&new_label);
-					self.dataset = Some(dataset);
-				},
-				Err(why) => {
-					//
-					self.dataset_path_label.replace_with(&format!(
-						"{FAILED_DIRECTORY_LABEL}: {why}"
-					));
-				},
-			}
-		}
 	}
 }
 

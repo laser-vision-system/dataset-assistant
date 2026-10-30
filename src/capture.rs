@@ -1,9 +1,15 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{
+	path::PathBuf,
+	sync::Arc,
+};
 
 use eframe::egui;
 use image::RgbImage;
 
-use crate::settings::{TEXTURE_HEIGHT, TEXTURE_WIDTH};
+use crate::settings::{
+	TEXTURE_HEIGHT,
+	TEXTURE_WIDTH,
+};
 
 /// Functionality for holding an image from a camera.
 #[derive(Clone)]

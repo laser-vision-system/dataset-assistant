@@ -1,16 +1,35 @@
+use std::time::Duration;
+
 use edge_cameras::{
-	camera_device::{CameraDevice, CameraLike},
+	camera_device::{
+		CameraDevice,
+		CameraLike as _,
+	},
 	controls::{
-		descriptions::{CamControl, IntegerRangeControl},
+		descriptions::{
+			CamControl,
+			IntegerRangeControl,
+		},
 		traits::{
-			ControlDefault, ControlDescription, ControlItems as _, ControlMax,
-			ControlMin, ControlStep, ControlValue as _,
+			ControlDefault,
+			ControlDescription,
+			ControlItems as _,
+			ControlMax,
+			ControlMin,
+			ControlStep,
+			ControlValue as _,
 		},
 		values::ConValueIntegerType,
 	},
-	error::{EdgeCamerasError, EdgeCamerasResult},
+	error::{
+		EdgeCamerasError,
+		EdgeCamerasResult,
+	},
 };
-use nokhwa::utils::{KnownCameraControl, MenuItem};
+use nokhwa::utils::{
+	KnownCameraControl,
+	MenuItem,
+};
 
 use crate::sweep::ControlSweep;
 
@@ -36,22 +55,29 @@ pub struct ControlManager {
 	pub min: ConValueIntegerType,
 	pub max: ConValueIntegerType,
 	pub enable: bool,
-	// These have to remain public because of mutable borrowing rules.
-	pub value_input: String,
-	pub step_input: String,
-	pub min_input: String,
-	pub max_input: String,
 }
 
 impl ControlManager {
+	/// Set the minimum value that the sweep will start at.
 	pub fn set_min(&mut self, min: ConValueIntegerType) {
-		if self.control_min() <= min && min < self.max {
+		if min <= self.max
+			&& self.control_min() <= min
+			&& (self.control_default().saturating_sub(min))
+				.checked_rem_euclid(self.control_step())
+				.is_some_and(|x| x == 0)
+		{
 			self.min = min;
 		}
 	}
 
+	/// Set the maximum value that the sweep is allowed to reach.
 	pub fn set_max(&mut self, max: ConValueIntegerType) {
-		if self.min < max && max <= self.control_max() {
+		if self.min <= max
+			&& max <= self.control_max()
+			&& (self.control_default().saturating_sub(max))
+				.checked_rem_euclid(self.control_step())
+				.is_some_and(|x| x == 0)
+		{
 			self.max = max;
 		}
 	}
@@ -155,10 +181,6 @@ impl TryFrom<CamControl> for ControlManager {
 			min: control.control_min(),
 			max: control.control_max(),
 			enable: true,
-			value_input: String::default(),
-			step_input: String::default(),
-			min_input: String::default(),
-			max_input: String::default(),
 		})
 	}
 }
@@ -168,9 +190,7 @@ pub fn try_disable_auto_exposure(
 ) -> EdgeCamerasResult<()> {
 	let id = KnownCameraControl::AutoExposure;
 	let CamControl::Menu(control) = camera.get_control(id)? else {
-		return Err(EdgeCamerasError::from(EdgeCamerasError::GetControlType(
-			id,
-		)));
+		return Err(EdgeCamerasError::GetControlType(id));
 	};
 	let items = control.control_items();
 	let valid_entires: Vec<_> = items
@@ -211,6 +231,9 @@ pub fn extract_controls(
 		{
 			continue;
 		}
+		if !matches!(&cam_control, CamControl::IntegerRange(_)) {
+			continue;
+		}
 		let control = ControlManager::try_from(cam_control)
 			.expect("camera control has an unsupported value description");
 		variants.push(control);
@@ -219,10 +242,133 @@ pub fn extract_controls(
 	variants
 }
 
+/// Extract current values for camera controls not represented by integer
+/// range sweeps.
+pub fn extract_fixed_control_values(
+	camera: &mut CameraDevice,
+	swept_controls: &[KnownCameraControl],
+) -> Vec<(String, String)> {
+	let Ok(controls) = camera.get_controls() else {
+		return Vec::new();
+	};
+	controls
+		.into_inner()
+		.into_iter()
+		.filter(|(id, control)| {
+			!(matches!(control, CamControl::None)
+				|| swept_controls.contains(id))
+		})
+		.flat_map(|(id, control)| {
+			[
+				control
+					.try_display_control_value()
+					.map(|label| (id.to_string(), label)),
+				control
+					.try_display_control_default()
+					.map(|label| (format!("{id}-default"), label)),
+				control
+					.try_display_control_min()
+					.map(|label| (format!("{id}-min"), label)),
+				control
+					.try_display_control_max()
+					.map(|label| (format!("{id}-max"), label)),
+				control
+					.try_display_control_step()
+					.map(|label| (format!("{id}-step"), label)),
+				control
+					.try_display_control_possible()
+					.map(|label| (format!("{id}-possible"), label)),
+				control
+					.try_display_control_items()
+					.map(|label| (format!("{id}-items"), label)),
+			]
+			.into_iter()
+			.flatten()
+			.collect::<Vec<_>>()
+		})
+		.collect()
+}
+
 pub fn build_control_sweeps(controls: &[ControlManager]) -> Vec<ControlSweep> {
 	controls
 		.iter()
-		.filter(|&control| control.enable)
 		.map(|control| control.clone().into())
 		.collect()
+}
+
+/// Return the number of capture permutations represented by the controls.
+pub fn total_permutations(controls: &[ControlManager]) -> u128 {
+	controls
+		.iter()
+		.filter(|control| control.enable)
+		.map(|control| {
+			let distance = control.max - control.min;
+			let count = distance.div_euclid(control.step) + 1;
+			u128::try_from(count).unwrap_or(u128::MAX)
+		})
+		.fold(1, u128::saturating_mul)
+}
+
+/// Estimate the save duration from sweep count and exposure value.
+///
+/// The estimate treats exposure values as milliseconds and includes the
+/// fixed camera settling delay. Backends may use different exposure units.
+pub fn estimate_save_duration(controls: &[ControlManager]) -> Duration {
+	let exposure_ms = controls
+		.iter()
+		.find(|control| {
+			control.control_id() == KnownCameraControl::ExposureAbsolute
+		})
+		.map_or(0, |control| {
+			let value = if control.enable {
+				control.max
+			} else {
+				control.control_default()
+			};
+			u64::try_from(value.max(0)).unwrap_or(u64::MAX)
+		});
+	let per_capture_ms = exposure_ms.saturating_add(100);
+	let permutation_count =
+		u64::try_from(total_permutations(controls)).unwrap_or(u64::MAX);
+	Duration::from_millis(per_capture_ms.saturating_mul(permutation_count))
+}
+
+#[cfg(test)]
+mod tests {
+	use edge_cameras::controls::{
+		descriptions::IntegerRangeControl,
+		values::ConValueInteger,
+	};
+	use nokhwa::utils::KnownCameraControl;
+
+	use super::*;
+
+	fn control(min: i64, max: i64, step: i64, enable: bool) -> ControlManager {
+		let base = IntegerRangeControl::new(
+			KnownCameraControl::Brightness,
+			ConValueInteger::from(min),
+			min,
+			step,
+			min,
+			max,
+		);
+		ControlManager {
+			base,
+			value: min,
+			step,
+			min,
+			max,
+			enable,
+		}
+	}
+
+	#[test]
+	fn permutation_count_includes_pinned_and_ignores_disabled_controls() {
+		let controls = [
+			control(4, 4, 1, true),
+			control(0, 8, 2, true),
+			control(0, 10, 1, false),
+		];
+		assert_eq!(total_permutations(&controls), 5);
+	}
 }
