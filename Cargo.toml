@@ -14,8 +14,9 @@ edge-core = { path = "./edge/crates/edge-core" }
 edge-vision = { path = "./edge/crates/edge-vision" }
 api = { path = "./edge/submodules/api" }
 nokhwa = { path = "./edge/submodules/nokhwa", default-features = false, features = [
-	"serialize",
 	"input-native",
+	"mjpeg",
+	"serialize",
 ] }
 
 image = { version = "0.25", default-features = false, features = [
