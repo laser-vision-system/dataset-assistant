@@ -151,7 +151,7 @@ impl fmt::Display for ControlSweep {
 			self.control.control_id(),
 			self.control.base.control_min(),
 		)?;
-		write!(
+		writeln!(
 			f,
 			"{}-max: {}",
 			self.control.control_id(),
