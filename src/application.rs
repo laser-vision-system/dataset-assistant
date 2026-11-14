@@ -1,10 +1,4 @@
-use std::{
-	convert::identity,
-	sync::{
-		Arc,
-		Mutex,
-	},
-};
+use std::convert::identity;
 
 use eframe::egui;
 
@@ -21,7 +15,7 @@ use crate::{
 /// The central egui application.
 pub struct DatasetAssistantApp {
 	state: State,
-	capture: Arc<Mutex<Capture>>,
+	capture: Capture,
 	ui: UIComponents,
 	/// For playing a tone when saving completes.
 	sound: Audio,
@@ -32,7 +26,7 @@ impl DatasetAssistantApp {
 	pub fn new(ctx: &egui::Context) -> Self {
 		Self {
 			state: State::new(),
-			capture: Arc::new(Mutex::new(Capture::new(ctx))),
+			capture: Capture::new(ctx),
 			ui: UIComponents::default(),
 			sound: Audio::default(),
 		}
@@ -160,14 +154,9 @@ impl DatasetAssistantApp {
 					);
 
 					if user_interface::save_button(ui, self.state.is_complete())
-					{
-						_ = self
-							.state
-							.try_to_collecting(self.capture.clone(), res)
-							.inspect_err(|why| {
-								eprintln!("Failed to start collecting: {why}");
-							});
-					}
+						&& let Err(why) = self.state.try_to_collecting(res) {
+							eprintln!("Failed to start collecting: {why}");
+						}
 				},
 			);
 
@@ -188,20 +177,21 @@ impl DatasetAssistantApp {
 	}
 
 	fn update(&mut self, ui: &mut egui::Ui, requested_capture: bool) {
+		self.state.set_live_feed(self.ui.live_feed());
 		self.ui.update_folder_dialog(ui);
 		if let Some(path) = self.ui.take_selected_folder() {
 			self.state.select_dataset_folder(path);
 		}
-		let mut capture = self
-			.capture
-			.lock()
-			.expect("Capture should never be poisoned");
 		self.state.execute_for_preparation(
-			&mut capture,
-			requested_capture || self.ui.live_feed(),
+			&mut self.capture,
+			ui.ctx(),
+			requested_capture,
 		);
 
-		self.state.execute_for_collecting(ui, &self.sound);
+		if let Some(image) = self.state.execute_for_collecting(ui, &self.sound)
+		{
+			self.capture.store_image(&image);
+		}
 
 		self.state.execute_for_building_csv();
 
@@ -226,10 +216,7 @@ impl eframe::App for DatasetAssistantApp {
 				.inner;
 
 			user_interface::display_panel(ui, |ui| {
-				self.capture
-					.lock()
-					.expect("Capture should never be poisoned")
-					.display_image(ui);
+				self.capture.display_image(ui);
 			});
 
 			requested_capture

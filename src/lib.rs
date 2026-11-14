@@ -83,6 +83,7 @@
 mod application;
 mod audio;
 mod camera_controls;
+mod camera_session;
 mod capture;
 mod csv_builder;
 mod dataset;

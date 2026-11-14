@@ -16,6 +16,11 @@ use std::{
 			AtomicBool,
 			Ordering,
 		},
+		mpsc::{
+			Receiver,
+			SyncSender,
+			sync_channel,
+		},
 	},
 	thread,
 	time::Duration,
@@ -33,7 +38,6 @@ use eframe::egui::TextBuffer as _;
 use image::RgbImage;
 
 use crate::{
-	capture::Capture,
 	runner::{
 		Runner,
 		RunnerError,
@@ -92,10 +96,11 @@ impl ImageMetadata {
 	}
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Saving {
 	handle: Option<RunnerJoinHandle>,
 	cancel: Arc<AtomicBool>,
+	frames: Receiver<RgbImage>,
 }
 
 impl Saving {
@@ -109,26 +114,27 @@ impl Saving {
 		mut control_sweeps: Vec<ControlSweep>,
 		fixed_controls: Vec<(String, String)>,
 		external_intensity: Option<f32>,
-		capture: Arc<Mutex<Capture>>,
 		camera: Arc<Mutex<CameraDevice>>,
 		progress: Arc<Mutex<String>>,
 	) -> Self {
 		let cancel = Arc::new(AtomicBool::new(false));
 		let worker_cancel = Arc::clone(&cancel);
+		let (frame_sender, frames) = sync_channel(1);
 		let run = move || {
 			// Technically impossible to get any other result.
+			let mut camera = camera.lock().unwrap();
 			let res = loop_all_permutations(
 				&destination,
 				&mut control_sweeps,
 				&fixed_controls,
 				external_intensity,
-				&capture,
-				&camera,
+				&mut camera,
 				&progress,
 				&worker_cancel,
+				&frame_sender,
 			)
 			.break_ok();
-			set_to_defaults(&mut control_sweeps, &camera);
+			set_to_defaults(&mut control_sweeps, &mut camera);
 			res.map_err(|()| {
 				RunnerError::new("Loop returned with a `ControlFlow::Continue`")
 			})
@@ -140,6 +146,7 @@ impl Saving {
 		Self {
 			handle: Some(handle),
 			cancel,
+			frames,
 		}
 	}
 }
@@ -151,6 +158,14 @@ impl Runner for Saving {
 
 	fn cancel(&mut self) {
 		self.cancel.store(true, Ordering::Relaxed);
+	}
+
+	fn poll_frame(&mut self) -> Option<RgbImage> {
+		let mut latest = None;
+		while let Ok(image) = self.frames.try_recv() {
+			latest = Some(image);
+		}
+		latest
 	}
 }
 
@@ -166,10 +181,10 @@ fn loop_all_permutations(
 	control_sweeps: &mut [ControlSweep],
 	fixed_controls: &[(String, String)],
 	external_intensity: Option<f32>,
-	capture: &Mutex<Capture>,
-	camera: &Mutex<CameraDevice>,
+	camera: &mut CameraDevice,
 	progress: &Mutex<String>,
 	cancel: &AtomicBool,
+	frame_sender: &SyncSender<RgbImage>,
 ) -> ControlFlow<()> {
 	loop {
 		if cancel.load(Ordering::Relaxed) {
@@ -196,10 +211,11 @@ fn loop_all_permutations(
 		thread::sleep(CAMERA_GRACE_PERIOD);
 
 		progress.lock().unwrap().replace_with(&val_strs.detailed);
-		let image = get_image(&mut camera.lock().unwrap()).into();
+		let image = get_image(camera).into();
 
 		let img_filepath = create_image_path(destination, &val_strs.short);
-		save_image_to(&mut capture.lock().unwrap(), &image, &img_filepath);
+		save_image_to(&image, &img_filepath);
+		_ = frame_sender.try_send(RgbImage::clone(&image));
 
 		let meta_filepath = create_metadata_path(destination, &val_strs.short);
 		save_metadata_to(&meta_filepath, &val_strs.detailed);
@@ -222,13 +238,11 @@ fn make_owned_collection(
 /// Append the [`ControlSweep`] to [`ImageMetadata`].
 fn update_cam_controls(
 	control_sweeps: Vec<&mut ControlSweep>,
-	camera: &Mutex<CameraDevice>,
+	camera: &mut CameraDevice,
 	val_strs: &mut ImageMetadata,
 ) {
-	let mut camera = camera.lock().unwrap();
-
 	call_on_each(control_sweeps, |sweep| {
-		sweep.apply_current(&mut camera);
+		sweep.apply_current(camera);
 		val_strs
 			.append_sweep(sweep)
 			.expect("Writing into the value strings should never fail");
@@ -257,13 +271,8 @@ fn create_image_path(destination: &Path, short: &str) -> PathBuf {
 	destination.join(format!("{FILE_NAME_BASE}{short}.{IMAGE_EXTENSION}"))
 }
 
-fn save_image_to(
-	capture: &mut Capture,
-	image: &RgbImage,
-	img_filepath: &PathBuf,
-) {
-	capture.store_image(image);
-	capture.save_to_file(img_filepath);
+fn save_image_to(image: &RgbImage, img_filepath: &PathBuf) {
+	image.save(img_filepath).unwrap();
 }
 
 fn create_metadata_path(destination: &Path, short: &str) -> PathBuf {
@@ -295,11 +304,10 @@ fn increment_controls(control_sweeps: &mut [ControlSweep]) -> ControlFlow<()> {
 /// Set all camera controls to their defaults.
 fn set_to_defaults(
 	control_sweeps: &mut Vec<ControlSweep>,
-	camera: &Mutex<CameraDevice>,
+	camera: &mut CameraDevice,
 ) {
-	let mut camera = camera.lock().unwrap();
 	for sweep_types in control_sweeps {
-		sweep_types.apply_default(&mut camera);
+		sweep_types.apply_default(camera);
 	}
 }
 

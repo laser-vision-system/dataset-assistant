@@ -5,6 +5,7 @@ use std::{
 	sync::{
 		Arc,
 		Mutex,
+		TryLockError,
 	},
 };
 
@@ -22,6 +23,7 @@ use eframe::egui::{
 	self,
 	TextBuffer as _,
 };
+use image::RgbImage;
 
 use crate::{
 	audio::Audio,
@@ -34,6 +36,7 @@ use crate::{
 		total_permutations,
 		try_disable_auto_exposure,
 	},
+	camera_session::CameraSession,
 	capture::Capture,
 	csv_builder::Version,
 	dataset::Dataset,
@@ -92,7 +95,7 @@ pub struct State {
 	/// Only set with requested cam index, used for controls, capture, and
 	/// collecting. Deeply coupled [here](self).
 	/// Semi-peristent.
-	camera: Option<Arc<Mutex<CameraDevice>>>,
+	camera: Option<CameraSession>,
 	/// Set when selecting camera, only diplayed once.
 	/// Coupled to [here](self) and [`camera`](CameraDevice).
 	/// Persistent.
@@ -181,7 +184,7 @@ impl State {
 		self.subset_path_label.replace_with(&subset_label);
 	}
 
-	fn add_camera(&mut self, index: u32) {
+	fn add_camera(&mut self, index: u32, ctx: egui::Context) {
 		let index = nokhwa::utils::CameraIndex::Index(index);
 		self.camera = match CameraDevice::try_new_open(index) {
 			Ok(mut camera) => {
@@ -196,7 +199,8 @@ impl State {
 					.collect();
 				self.fixed_control_values =
 					extract_fixed_control_values(&mut camera, &swept_controls);
-				Some(Arc::new(Mutex::new(camera)))
+				let camera = Arc::new(Mutex::new(camera));
+				CameraSession::new(camera, ctx).ok()
 			},
 			Err(_) => None,
 		};
@@ -247,21 +251,27 @@ impl State {
 			estimate_save_duration(&self.controls),
 		)
 	}
+
+	pub fn set_live_feed(&self, enabled: bool) {
+		if let Some(camera) = self.camera.as_ref() {
+			camera.set_live_feed(enabled);
+		}
+	}
 }
 
 /// State changers.
 impl State {
 	pub fn try_to_collecting(
 		&mut self,
-		capture: Arc<Mutex<Capture>>,
 		external_laser: Option<f32>,
 	) -> Result<(), String> {
 		let camera = self
 			.camera
-			.as_mut()
+			.as_ref()
 			.ok_or_else(|| String::from("No camera present"))?;
 
 		let control_sweeps = build_control_sweeps(&self.controls);
+		let camera_handle = camera.camera();
 		let fixed_controls = self.fixed_control_values.clone();
 		let dataset = self
 			.dataset
@@ -275,8 +285,7 @@ impl State {
 			control_sweeps,
 			fixed_controls,
 			external_laser,
-			capture,
-			camera.clone(),
+			camera_handle,
 			self.saving_progress_label.clone(),
 		));
 		self.stage = Stage::Collecting(saving);
@@ -290,6 +299,7 @@ impl State {
 	pub fn execute_for_preparation(
 		&mut self,
 		capture: &mut Capture,
+		ctx: &egui::Context,
 		request_capture: bool,
 	) {
 		if !self.current_state_is_preparation() {
@@ -300,12 +310,16 @@ impl State {
 			return;
 		}
 
-		self.prep_cam_dev();
+		self.prep_cam_dev(ctx.clone());
 
-		if let Some(camera) = self.camera.clone() {
-			self.prep_cam_controls(&camera);
-			_ = Self::prep_capture(capture, request_capture, &camera)
-				.inspect_err(|why| eprintln!("{why}"));
+		if let Some(camera) = self.camera.as_ref() {
+			if request_capture {
+				camera.request_capture();
+			}
+			if let Some(image) = camera.poll_frame() {
+				capture.store_image(&image.into());
+			}
+			self.prep_cam_controls(&camera.camera());
 		}
 	}
 
@@ -340,10 +354,10 @@ impl State {
 		false
 	}
 
-	fn prep_cam_dev(&mut self) {
+	fn prep_cam_dev(&mut self, ctx: egui::Context) {
 		if let Some(should) = self.requested_cam_index.take() {
 			if let Some(index) = should {
-				self.add_camera(index);
+				self.add_camera(index, ctx);
 				self.camera_id_label.replace_with(&format!("{index}"));
 			} else {
 				self.camera = None;
@@ -363,7 +377,17 @@ impl State {
 				"Different sizes will cause data loss"
 			);
 
-			let mut cam = camera.lock().unwrap();
+			let mut cam = match camera.try_lock() {
+				Ok(camera) => camera,
+				Err(TryLockError::WouldBlock) => {
+					self.requested_controls = Some(requested_controls);
+					return;
+				},
+				Err(TryLockError::Poisoned(why)) => {
+					eprintln!("Camera lock is poisoned: {why}");
+					return;
+				},
+			};
 			for (mut value, manager) in
 				requested_controls.into_iter().zip(&mut self.controls)
 			{
@@ -382,34 +406,19 @@ impl State {
 			}
 		}
 	}
-
-	fn prep_capture(
-		capture: &mut Capture,
-		request_capture: bool,
-		camera: &Mutex<CameraDevice>,
-	) -> Result<(), String> {
-		if request_capture {
-			let mut cam = camera
-				.lock()
-				.map_err(|why| format!("Unlocking camera failed: {why}"))?;
-			let buffer = cam
-				.get_frame_buffer()
-				.map_err(|why| format!("Failed to get frame: {why}"))?;
-			let image = buffer
-				.try_decode_to_image()
-				.map_err(|why| format!("Failed to decode to image: {why}"))?;
-			capture.store_image(&image.into());
-		}
-		Ok(())
-	}
 }
 
 /// `Collecting` state.
 impl State {
-	pub fn execute_for_collecting(&mut self, ui: &mut egui::Ui, sound: &Audio) {
+	pub fn execute_for_collecting(
+		&mut self,
+		ui: &mut egui::Ui,
+		sound: &Audio,
+	) -> Option<RgbImage> {
 		let Stage::Collecting(saving) = &mut self.stage else {
-			return;
+			return None;
 		};
+		let image = saving.poll_frame();
 
 		if let Some(handle) = saving.is_done() {
 			handle.join().err().inspect(|why| {
@@ -421,6 +430,7 @@ impl State {
 			));
 			sound.play_save_tone();
 		}
+		image
 	}
 }
 

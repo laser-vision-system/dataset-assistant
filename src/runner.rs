@@ -5,6 +5,8 @@ use std::{
 	fmt,
 };
 
+use image::RgbImage;
+
 pub type RunnerJoinHandle = std::thread::JoinHandle<Result<()>>;
 pub type Result<T> = std::result::Result<T, RunnerError>;
 
@@ -13,6 +15,11 @@ pub trait Runner {
 	fn handle(&mut self) -> &mut Option<RunnerJoinHandle>;
 
 	fn cancel(&mut self) {
+	}
+
+	/// HACK: Allow saving process to be queried for frames.
+	fn poll_frame(&mut self) -> Option<RgbImage> {
+		None
 	}
 
 	fn is_done(&mut self) -> Option<RunnerResult> {
