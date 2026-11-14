@@ -1,7 +1,4 @@
-use std::{
-	path::PathBuf,
-	sync::Arc,
-};
+use std::sync::Arc;
 
 use eframe::egui;
 use image::RgbImage;
@@ -11,7 +8,7 @@ use crate::settings::{
 	TEXTURE_WIDTH,
 };
 
-/// Functionality for holding an image from a camera.
+/// Functionality for holding an image texture from a camera.
 #[derive(Clone)]
 pub struct Capture {
 	pub texture: egui::TextureHandle,
@@ -19,6 +16,7 @@ pub struct Capture {
 }
 
 impl Capture {
+	/// Create a new capture texture.
 	pub fn new(ctx: &egui::Context) -> Self {
 		let texture = ctx.load_texture(
 			"capture",
@@ -37,6 +35,7 @@ impl Capture {
 		}
 	}
 
+	/// Store an RGB image in the texture.
 	pub fn store_image(&mut self, image: &RgbImage) {
 		#[cfg(debug_assertions)]
 		let (img_width, img_height) = image.dimensions();
@@ -59,28 +58,6 @@ impl Capture {
 			});
 		} else {
 			ui.image((self.texture.id(), ui.available_size()));
-		}
-	}
-
-	#[expect(
-		clippy::cast_possible_truncation,
-		reason = "The image dimensions will never get big enough to matter"
-	)]
-	pub fn save_to_file(&mut self, path: &PathBuf) {
-		let Some(capture) = self.image.as_ref() else {
-			eprintln!("No image to save");
-			return;
-		};
-
-		let res = image::save_buffer(
-			path,
-			capture.as_raw(),
-			capture.width() as u32,
-			capture.height() as u32,
-			image::ColorType::Rgba8,
-		);
-		if let Err(why) = res {
-			eprintln!("Error saving capture {why}");
 		}
 	}
 }
